@@ -10,9 +10,10 @@
 // ============================================================================
 
 import { execSync } from "node:child_process";
-import { readFileSync, existsSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from "node:fs";
+import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { tmpdir } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -85,13 +86,23 @@ if (dryRun) {
 let success = 0;
 let failed = 0;
 
+// Use a temp file for each statement to avoid shell escaping issues
+// with multi-line SQL on Windows CMD / PowerShell
+const tmpDir = join(tmpdir(), "trading-pod-migrate");
+mkdirSync(tmpDir, { recursive: true });
+const tmpFile = join(tmpDir, "stmt.sql");
+
 for (const stmt of statements) {
   const envFlag = env ? `--env ${env}` : "";
   const localFlag = local ? "--local" : "";
-  const cmd = `npx wrangler d1 execute ${DB_NAME} ${envFlag} ${localFlag} --command="${stmt.replace(/"/g, '\\"')}"`;
+
+  // Write statement to temp file (avoids --command quoting issues)
+  writeFileSync(tmpFile, stmt + ";", "utf-8");
+  const cmd = `npx wrangler d1 execute ${DB_NAME} ${envFlag} ${localFlag} --file="${tmpFile}"`;
 
   try {
-    console.log(`  ✓  ${stmt.slice(0, 60)}...`);
+    const label = stmt.replace(/\s+/g, " ").slice(0, 60);
+    console.log(`  ✓  ${label}...`);
     execSync(cmd, { stdio: "pipe", cwd: resolve(ROOT, "packages/backend/fc-worker") });
     success++;
   } catch (err) {
@@ -106,6 +117,9 @@ for (const stmt of statements) {
     }
   }
 }
+
+// Clean up temp file
+try { unlinkSync(tmpFile); } catch { /* ignore */ }
 
 console.log(`\n✅  Migration complete: ${success} succeeded, ${failed} failed\n`);
 
