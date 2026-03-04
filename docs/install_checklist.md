@@ -55,13 +55,28 @@ A step-by-step guide to go from zero to a running Trading-Pod. Tick each box as 
   ```bash
   pnpm test
   ```
-  ✅ You should see 119 tests pass across 8 test files.
+  ✅ You should see 263 tests pass across 21 test files.
 
 - [ ] **Copy the environment template**
+
+  **PowerShell (recommended on Windows):**
+  ```powershell
+  Copy-Item .env.example .env
+  Copy-Item packages/dashboard/.env.example packages/dashboard/.env
+  ```
+
+  **CMD (Windows):**
+  ```cmd
+  copy .env.example .env
+  copy packages\dashboard\.env.example packages\dashboard\.env
+  ```
+
+  **macOS / Linux:**
   ```bash
   cp .env.example .env
   cp packages/dashboard/.env.example packages/dashboard/.env
   ```
+
   Edit the `.env` files to fill in your values. These files are git-ignored.
 
 ---
