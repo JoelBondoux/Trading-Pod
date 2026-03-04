@@ -84,6 +84,12 @@ const MAX_DECISIONS = 200;
 const MAX_CLOSED_TRADES = 200;
 const MAX_EVENT_LOG = 500;
 
+/** FC worker URL for server-side control commands */
+const FC_URL =
+  (import.meta as any).env?.VITE_FC_URL ?? "http://localhost:8788";
+const INTERNAL_SECRET =
+  (import.meta as any).env?.VITE_INTERNAL_SECRET ?? "";
+
 export const usePodStore = create<PodStore>((set, get) => ({
   // --- Initial state ---
   signals: [],
@@ -153,16 +159,39 @@ export const usePodStore = create<PodStore>((set, get) => ({
       eventLog: [e, ...prev.eventLog].slice(0, MAX_EVENT_LOG),
     })),
 
-  toggleFreezeAgent: (agentId) =>
-    set((prev) => {
-      const next = new Set(prev.frozenAgents);
-      if (next.has(agentId)) next.delete(agentId);
-      else next.add(agentId);
-      return { frozenAgents: next };
-    }),
+  toggleFreezeAgent: (agentId) => {
+    const prev = get();
+    const next = new Set(prev.frozenAgents);
+    const frozen = !next.has(agentId);
+    if (frozen) next.add(agentId);
+    else next.delete(agentId);
+    set({ frozenAgents: next });
 
-  toggleTradingPaused: () =>
-    set((prev) => ({ tradingPaused: !prev.tradingPaused })),
+    // Fire-and-forget server-side update
+    fetch(`${FC_URL}/state/freeze`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Secret": INTERNAL_SECRET,
+      },
+      body: JSON.stringify({ agentId, frozen }),
+    }).catch((err) => console.error("Failed to sync freeze state:", err));
+  },
+
+  toggleTradingPaused: () => {
+    const paused = !get().tradingPaused;
+    set({ tradingPaused: paused });
+
+    // Fire-and-forget server-side update
+    fetch(`${FC_URL}/state/paused`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Secret": INTERNAL_SECRET,
+      },
+      body: JSON.stringify({ paused }),
+    }).catch((err) => console.error("Failed to sync pause state:", err));
+  },
 
   // --- Unified event handler ---
   handleEvent: (e) => {

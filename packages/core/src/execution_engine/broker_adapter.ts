@@ -94,7 +94,7 @@ export class IGBrokerAdapter implements BrokerAdapter {
     // 1. Authenticate via POST /session
     // 2. Create position via POST /positions/otc
     // 3. Parse deal reference and confirm via GET /confirms/:dealReference
-    throw new Error(`IG broker adapter (${this.baseUrl}) not yet implemented. API key: ${this.config.apiKey.slice(0, 4)}…`);
+    throw new Error("IG broker adapter not yet implemented");
   }
 
   async cancelOrder(_orderId: string): Promise<boolean> {
@@ -139,7 +139,7 @@ export class KrakenBrokerAdapter implements BrokerAdapter {
     // 2. Generate nonce and HMAC-SHA512 signature
     // 3. POST /0/private/AddOrder
     // 4. Parse txid from response
-    throw new Error(`Kraken adapter (${this.baseUrl}) not yet implemented. Key: ${this.config.apiKey.slice(0, 4)}…`);
+    throw new Error("Kraken adapter not yet implemented");
   }
 
   async cancelOrder(_orderId: string): Promise<boolean> {

@@ -9,7 +9,9 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "upgrade": "node scripts/upgrade.mjs",
+    "upgrade:preview": "node scripts/upgrade.mjs --dry-run"
   },
   "engines": {
     "node": ">=20.0.0",

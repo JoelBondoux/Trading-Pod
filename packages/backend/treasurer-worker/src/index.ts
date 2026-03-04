@@ -2,20 +2,32 @@
 // Treasurer Worker — Capital gating Cloudflare Worker
 // ============================================================================
 // Routes:
-//   POST /capital/request — Request capital allocation
-//   POST /capital/return  — Return capital after trade closes
-//   GET  /state           — Get current Treasurer state
+//   POST /capital/request — Request capital allocation [internal auth]
+//   POST /capital/return  — Return capital after trade closes [internal auth]
+//   GET  /state           — Get current Treasurer state [internal auth]
 // ============================================================================
 
 import { CapitalRequestSchema, CapitalReturnSchema } from "@trading-pod/shared";
+import { validateInternalRequest, forbidden, internalError } from "@trading-pod/shared";
 
 export interface Env {
   TRADE_DB: D1Database;
+  INTERNAL_SERVICE_SECRET: string;
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    // Health check — public (no sensitive data)
+    if (request.method === "GET" && url.pathname === "/health") {
+      return Response.json({ status: "ok", worker: "treasurer" });
+    }
+
+    // All other endpoints require internal auth
+    if (!validateInternalRequest(request, env.INTERNAL_SERVICE_SECRET)) {
+      return forbidden();
+    }
 
     try {
       if (request.method === "POST" && url.pathname === "/capital/request") {
@@ -30,17 +42,9 @@ export default {
         return await getState(env);
       }
 
-      if (request.method === "GET" && url.pathname === "/health") {
-        return Response.json({ status: "ok", worker: "treasurer" });
-      }
-
       return new Response("Not Found", { status: 404 });
     } catch (error) {
-      console.error("Treasurer Worker error:", error);
-      return Response.json(
-        { error: error instanceof Error ? error.message : "Internal error" },
-        { status: 500 }
-      );
+      return internalError(error);
     }
   },
 } satisfies ExportedHandler<Env>;

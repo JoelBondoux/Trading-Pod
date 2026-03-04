@@ -2,17 +2,30 @@
 // Savings Worker — One-way savings vault Cloudflare Worker
 // ============================================================================
 // Routes:
-//   POST /deposit — Deposit profits (one-way, never returns)
-//   GET  /state   — Get savings totals
+//   POST /deposit — Deposit profits (one-way, never returns) [internal auth]
+//   GET  /state   — Get savings totals                        [internal auth]
 // ============================================================================
+
+import { validateInternalRequest, forbidden, internalError } from "@trading-pod/shared";
 
 export interface Env {
   TRADE_DB: D1Database;
+  INTERNAL_SERVICE_SECRET: string;
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    // Health check — public (no sensitive data)
+    if (request.method === "GET" && url.pathname === "/health") {
+      return Response.json({ status: "ok", worker: "savings" });
+    }
+
+    // All other endpoints require internal auth
+    if (!validateInternalRequest(request, env.INTERNAL_SERVICE_SECRET)) {
+      return forbidden();
+    }
 
     try {
       if (request.method === "POST" && url.pathname === "/deposit") {
@@ -23,17 +36,9 @@ export default {
         return await getState(env);
       }
 
-      if (request.method === "GET" && url.pathname === "/health") {
-        return Response.json({ status: "ok", worker: "savings" });
-      }
-
       return new Response("Not Found", { status: 404 });
     } catch (error) {
-      console.error("Savings Worker error:", error);
-      return Response.json(
-        { error: error instanceof Error ? error.message : "Internal error" },
-        { status: 500 }
-      );
+      return internalError(error);
     }
   },
 } satisfies ExportedHandler<Env>;

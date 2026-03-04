@@ -3,24 +3,39 @@
 // ============================================================================
 // Receives agent signals, runs FC logic, calls Treasurer, emits decisions.
 // Routes:
-//   POST /signals       — Receive agent signal(s)
-//   GET  /decisions/:id — Fetch a specific decision
-//   GET  /decisions     — List recent decisions
+//   POST /signals       — Receive agent signal(s)     [internal auth]
+//   GET  /decisions/:id — Fetch a specific decision    [internal auth]
+//   GET  /decisions     — List recent decisions        [internal auth]
+//   GET  /state/paused  — Check if trading is paused   [internal auth]
+//   PUT  /state/paused  — Toggle trading pause          [internal auth]
+//   PUT  /state/freeze  — Freeze/unfreeze an agent      [internal auth]
 // ============================================================================
 
 import { AgentSignalSchema } from "@trading-pod/shared";
 import type { AgentSignal } from "@trading-pod/shared";
+import { validateInternalRequest, forbidden, internalError } from "@trading-pod/shared";
 
 export interface Env {
   TRADE_DB: D1Database;
   CONFIG_KV: KVNamespace;
   TREASURER_SERVICE: Fetcher;
   EVENT_STREAM_SERVICE: Fetcher;
+  INTERNAL_SERVICE_SECRET: string;
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    // Health check — public (no sensitive data)
+    if (request.method === "GET" && url.pathname === "/health") {
+      return Response.json({ status: "ok", worker: "fc" });
+    }
+
+    // All other endpoints require internal auth
+    if (!validateInternalRequest(request, env.INTERNAL_SERVICE_SECRET)) {
+      return forbidden();
+    }
 
     try {
       // POST /signals — Receive and process agent signals
@@ -42,18 +57,34 @@ export default {
         return await listDecisions(limit, env);
       }
 
-      // Health check
-      if (request.method === "GET" && url.pathname === "/health") {
-        return Response.json({ status: "ok", worker: "fc" });
+      // GET /state/paused — Check trading pause state
+      if (request.method === "GET" && url.pathname === "/state/paused") {
+        const paused = (await env.CONFIG_KV.get("state:trading_paused")) === "true";
+        return Response.json({ paused });
+      }
+
+      // PUT /state/paused — Toggle trading pause (server-side)
+      if (request.method === "PUT" && url.pathname === "/state/paused") {
+        const body = (await request.json()) as { paused: boolean };
+        await env.CONFIG_KV.put("state:trading_paused", String(!!body.paused));
+        return Response.json({ paused: !!body.paused });
+      }
+
+      // PUT /state/freeze — Freeze/unfreeze an agent (server-side)
+      if (request.method === "PUT" && url.pathname === "/state/freeze") {
+        const body = (await request.json()) as { agentId: string; frozen: boolean };
+        const frozenRaw = await env.CONFIG_KV.get("state:frozen_agents");
+        const frozenSet: string[] = frozenRaw ? JSON.parse(frozenRaw) : [];
+        const set = new Set(frozenSet);
+        if (body.frozen) set.add(body.agentId);
+        else set.delete(body.agentId);
+        await env.CONFIG_KV.put("state:frozen_agents", JSON.stringify([...set]));
+        return Response.json({ agentId: body.agentId, frozen: body.frozen });
       }
 
       return new Response("Not Found", { status: 404 });
     } catch (error) {
-      console.error("FC Worker error:", error);
-      return Response.json(
-        { error: error instanceof Error ? error.message : "Internal error" },
-        { status: 500 }
-      );
+      return internalError(error);
     }
   },
 } satisfies ExportedHandler<Env>;
@@ -63,6 +94,15 @@ export default {
 // ============================================================================
 
 async function handleSignals(request: Request, env: Env): Promise<Response> {
+  // Check server-side pause flag
+  const paused = (await env.CONFIG_KV.get("state:trading_paused")) === "true";
+  if (paused) {
+    return Response.json(
+      { error: "Trading is paused", paused: true },
+      { status: 503 }
+    );
+  }
+
   const body = await request.json();
 
   // Accept single signal or array
@@ -72,9 +112,18 @@ async function handleSignals(request: Request, env: Env): Promise<Response> {
   const signals: AgentSignal[] = [];
   const errors: string[] = [];
 
+  // Load frozen agent list
+  const frozenRaw = await env.CONFIG_KV.get("state:frozen_agents");
+  const frozenAgents: Set<string> = new Set(frozenRaw ? JSON.parse(frozenRaw) : []);
+
   for (const raw of rawSignals) {
     const result = AgentSignalSchema.safeParse(raw);
     if (result.success) {
+      // Skip signals from frozen agents
+      if (frozenAgents.has(result.data.agentId)) {
+        errors.push(`Agent ${result.data.agentId} is frozen — signal ignored`);
+        continue;
+      }
       signals.push(result.data);
     } else {
       errors.push(`Invalid signal: ${result.error.message}`);

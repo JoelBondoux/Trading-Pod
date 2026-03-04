@@ -7,8 +7,9 @@
 // Route: POST /webhook/tradingview
 //
 // Security:
-// - Validates source IPs (TradingView's known egress IPs)
+// - Validates source IPs (TradingView's known egress IPs) — blocking by default
 // - Validates shared secret in the payload body
+// - Forwards to FC via service binding with INTERNAL_SERVICE_SECRET header
 // - TradingView does NOT send auth headers, so we embed a secret in the JSON
 //
 // TradingView webhook constraints:
@@ -18,10 +19,12 @@
 // ============================================================================
 
 import { TradingViewWebhookSchema } from "@trading-pod/shared";
+import { internalError } from "@trading-pod/shared";
 
 export interface Env {
   CONFIG_KV: KVNamespace;
   FC_SERVICE: Fetcher;
+  INTERNAL_SERVICE_SECRET: string;
 }
 
 /** TradingView's known source IPs for webhook requests */
@@ -47,11 +50,7 @@ export default {
 
       return new Response("Not Found", { status: 404 });
     } catch (error) {
-      console.error("Webhook Worker error:", error);
-      return Response.json(
-        { error: error instanceof Error ? error.message : "Internal error" },
-        { status: 500 }
-      );
+      return internalError(error);
     }
   },
 } satisfies ExportedHandler<Env>;
@@ -60,11 +59,12 @@ async function handleTradingViewWebhook(
   request: Request,
   env: Env
 ): Promise<Response> {
-  // 1. Validate source IP (optional — can be bypassed by Cloudflare edge)
+  // 1. Validate source IP — block by default unless allowlist is disabled in KV
   const sourceIp = request.headers.get("CF-Connecting-IP");
-  if (sourceIp && !TRADINGVIEW_IPS.has(sourceIp)) {
-    console.warn(`Webhook from unexpected IP: ${sourceIp}`);
-    // Not blocking — IP list may change and CF may proxy differently
+  const enforceIpAllowlist = (await env.CONFIG_KV.get("config:enforce_ip_allowlist")) !== "false";
+  if (enforceIpAllowlist && sourceIp && !TRADINGVIEW_IPS.has(sourceIp)) {
+    console.warn(`Blocked webhook from non-TradingView IP: ${sourceIp}`);
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   // 2. Parse and validate payload
@@ -108,12 +108,15 @@ async function handleTradingViewWebhook(
     timestamp: new Date().toISOString(),
   };
 
-  // 5. Forward to FC Worker via service binding
+  // 5. Forward to FC Worker via service binding (with internal auth)
   try {
     const fcResponse = await env.FC_SERVICE.fetch(
       new Request("https://fc-internal/signals", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Internal-Secret": env.INTERNAL_SERVICE_SECRET,
+        },
         body: JSON.stringify(agentSignal),
       })
     );

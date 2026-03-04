@@ -5,6 +5,15 @@ import type { SystemEvent } from "@trading-pod/shared";
 const WS_URL =
   (import.meta as any).env?.VITE_WS_URL ?? "ws://localhost:8787/ws";
 
+const DASHBOARD_TOKEN =
+  (import.meta as any).env?.VITE_DASHBOARD_TOKEN ?? "";
+
+/** Build the authenticated WebSocket URL with token query parameter */
+function getAuthenticatedWsUrl(): string {
+  const base = WS_URL.replace(/\/$/, "");
+  return DASHBOARD_TOKEN ? `${base}?token=${encodeURIComponent(DASHBOARD_TOKEN)}` : base;
+}
+
 const RECONNECT_BASE_MS = 1_000;
 const RECONNECT_MAX_MS = 30_000;
 
@@ -38,7 +47,7 @@ export function useEventStream() {
     }
 
     try {
-      const ws = new WebSocket(WS_URL);
+      const ws = new WebSocket(getAuthenticatedWsUrl());
       wsRef.current = ws;
 
       ws.onopen = () => {

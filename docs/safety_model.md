@@ -59,11 +59,13 @@ For crypto trades, the Tax Collector reserves ~24% of gains:
 
 ## Emergency Controls
 
-The dashboard Control Panel provides:
+The dashboard Control Panel provides **server-side enforced** controls:
 
-- **Pause Trading** — immediately stops all signal processing
-- **Freeze Agent** — excludes individual agents from consensus
+- **Pause Trading** — sets `state:trading_paused` in KV; the FC worker rejects all incoming signals with HTTP 503 while paused
+- **Freeze Agent** — sets `state:frozen_agents` in KV; the FC worker skips signals from frozen agents during pipeline processing
 - **Event Log** — real-time audit trail of all system events
+
+These controls operate at the backend level — even if the dashboard disconnects, the pause/freeze state persists in KV until explicitly reversed.
 
 ## What Cannot Happen
 

@@ -5,28 +5,59 @@
 // Dashboard connects via WebSocket to receive real-time system events.
 //
 // Routes:
-//   GET  /ws        — Upgrade to WebSocket (dashboard clients)
-//   POST /broadcast — Broadcast an event to all connected clients
-//   GET  /health    — Health check
+//   GET  /ws        — Upgrade to WebSocket      [dashboard token required]
+//   POST /broadcast — Broadcast to all clients  [internal auth required]
+//   GET  /health    — Health check              [public]
 // ============================================================================
+
+import { validateInternalRequest, validateDashboardToken, forbidden } from "@trading-pod/shared";
 
 export interface Env {
   EVENT_STREAM_DO: DurableObjectNamespace;
+  INTERNAL_SERVICE_SECRET: string;
+  DASHBOARD_TOKEN: string;
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // Route all requests to a single Durable Object instance (singleton)
-    const doId = env.EVENT_STREAM_DO.idFromName("main");
-    const doStub = env.EVENT_STREAM_DO.get(doId);
-
+    // Health check — public
     if (url.pathname === "/health") {
       return Response.json({ status: "ok", worker: "event-stream" });
     }
 
-    return doStub.fetch(request);
+    // WebSocket upgrade — requires dashboard token
+    if (url.pathname === "/ws") {
+      if (!validateDashboardToken(request, env.DASHBOARD_TOKEN)) {
+        return forbidden();
+      }
+      const doId = env.EVENT_STREAM_DO.idFromName("main");
+      const doStub = env.EVENT_STREAM_DO.get(doId);
+      return doStub.fetch(request);
+    }
+
+    // Broadcast — requires internal service secret
+    if (url.pathname === "/broadcast") {
+      if (!validateInternalRequest(request, env.INTERNAL_SERVICE_SECRET)) {
+        return forbidden();
+      }
+      const doId = env.EVENT_STREAM_DO.idFromName("main");
+      const doStub = env.EVENT_STREAM_DO.get(doId);
+      return doStub.fetch(request);
+    }
+
+    // Status — requires internal auth (exposes client count)
+    if (url.pathname === "/status") {
+      if (!validateInternalRequest(request, env.INTERNAL_SERVICE_SECRET)) {
+        return forbidden();
+      }
+      const doId = env.EVENT_STREAM_DO.idFromName("main");
+      const doStub = env.EVENT_STREAM_DO.get(doId);
+      return doStub.fetch(request);
+    }
+
+    return new Response("Not Found", { status: 404 });
   },
 } satisfies ExportedHandler<Env>;
 
