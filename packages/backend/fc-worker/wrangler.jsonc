@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "trading-pod-fc",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-12-01",
+  "d1_databases": [
+    {
+      "binding": "TRADE_DB",
+      "database_name": "trading-pod-db",
+      "database_id": "REPLACE_WITH_ACTUAL_DB_ID"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CONFIG_KV",
+      "id": "REPLACE_WITH_ACTUAL_KV_ID"
+    }
+  ],
+  "services": [
+    {
+      "binding": "TREASURER_SERVICE",
+      "service": "trading-pod-treasurer"
+    },
+    {
+      "binding": "EVENT_STREAM_SERVICE",
+      "service": "trading-pod-event-stream"
+    }
+  ]
+}

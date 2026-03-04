@@ -1,0 +1,19 @@
+{
+  "name": "trading-pod",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Fully automated, low-risk, multi-agent trading system",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r --parallel dev",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.4"
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "trading-pod-treasurer",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-12-01",
+  "d1_databases": [
+    {
+      "binding": "TRADE_DB",
+      "database_name": "trading-pod-db",
+      "database_id": "REPLACE_WITH_ACTUAL_DB_ID"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/shared" },
+    { "path": "packages/agents" },
+    { "path": "packages/core" },
+    { "path": "packages/dashboard" },
+    { "path": "packages/backend/fc-worker" },
+    { "path": "packages/backend/treasurer-worker" },
+    { "path": "packages/backend/savings-worker" },
+    { "path": "packages/backend/event-stream-worker" },
+    { "path": "packages/backend/webhook-worker" }
+  ]
+}

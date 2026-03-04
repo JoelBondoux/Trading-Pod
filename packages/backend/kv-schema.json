@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Trading-Pod KV Schema",
+  "description": "Documents Cloudflare KV key patterns. KV is used for READ-HEAVY config only (1,000 writes/day free tier limit). All stateful data lives in D1.",
+  "keyPatterns": {
+    "config:risk_rules": {
+      "description": "Risk rule configuration parameters for the FC",
+      "valueType": "RiskRuleConfig (JSON)",
+      "writeFrequency": "Rarely (manual config updates only)",
+      "readFrequency": "Every FC decision cycle",
+      "example": {
+        "minRewardRiskRatio": 1.5,
+        "maxStopLossPercent": 3.0,
+        "minStopLossPercent": 0.1,
+        "maxTradesPerDay": 5,
+        "minConfidence": 0.6,
+        "blockedRegimes": ["volatile"],
+        "newsBlockWindowMinutes": 30
+      }
+    },
+    "config:agents": {
+      "description": "Agent registration metadata (agentId, name, enabled status)",
+      "valueType": "AgentMeta[] (JSON array)",
+      "writeFrequency": "Rarely (when agents are added/removed)",
+      "readFrequency": "On worker startup and agent listing"
+    },
+    "config:treasurer_limits": {
+      "description": "Treasurer limit overrides (ceiling, daily limit, scale bounds)",
+      "valueType": "Partial<TreasurerConfig> (JSON)",
+      "writeFrequency": "Rarely (manual override only)",
+      "readFrequency": "Every capital request"
+    },
+    "config:tax": {
+      "description": "Tax Collector configuration (reserve rate, annual exempt amount)",
+      "valueType": "TaxCollectorConfig (JSON)",
+      "writeFrequency": "Rarely (annual tax year changes)",
+      "readFrequency": "Every profitable crypto trade close"
+    },
+    "config:webhook_secret": {
+      "description": "Shared secret for validating TradingView webhook payloads",
+      "valueType": "string",
+      "writeFrequency": "Rarely (rotation only)",
+      "readFrequency": "Every incoming webhook"
+    }
+  }
+}

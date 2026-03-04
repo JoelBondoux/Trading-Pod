@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "trading-pod-webhook",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-12-01",
+  "kv_namespaces": [
+    {
+      "binding": "CONFIG_KV",
+      "id": "REPLACE_WITH_ACTUAL_KV_ID"
+    }
+  ],
+  "services": [
+    {
+      "binding": "FC_SERVICE",
+      "service": "trading-pod-fc"
+    }
+  ]
+}

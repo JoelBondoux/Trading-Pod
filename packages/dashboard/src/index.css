@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-pod-bg text-gray-100;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-pod-bg;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-pod-border rounded-full;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-pod-surface border border-pod-border rounded-lg p-4;
+  }
+  .card-title {
+    @apply text-sm font-semibold text-gray-300 uppercase tracking-wide;
+  }
+}
