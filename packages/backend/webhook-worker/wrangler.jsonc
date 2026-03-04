@@ -15,4 +15,7 @@
       "service": "trading-pod-fc"
     }
   ]
+  // Secrets (set via `wrangler secret put`):
+  //   INTERNAL_SERVICE_SECRET — shared auth token for FC forwarding
+  //   WEBHOOK_SECRET — shared secret for TradingView webhook validation
 }

@@ -10,4 +10,6 @@
       "database_id": "REPLACE_WITH_ACTUAL_DB_ID"
     }
   ]
+  // Secrets (set via `wrangler secret put`):
+  //   INTERNAL_SERVICE_SECRET — shared auth token for service-to-service calls
 }

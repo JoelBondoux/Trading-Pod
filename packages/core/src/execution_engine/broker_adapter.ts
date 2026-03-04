@@ -177,15 +177,24 @@ export function createBrokerAdapter(
   }
 }
 
+/** Trading mode — paper always forces MockBrokerAdapter */
+export type TradingMode = "paper" | "live";
+
 /**
  * Select the appropriate broker adapter based on asset class.
+ * In paper mode, always returns the mock adapter regardless of asset class.
  * FX → IG (spread betting, tax-free)
  * Crypto → Kraken (spot)
  */
 export function selectBrokerForAsset(
   assetClass: "fx" | "crypto",
-  adapters: { ig: BrokerAdapter; kraken: BrokerAdapter; mock: BrokerAdapter }
+  adapters: { ig: BrokerAdapter; kraken: BrokerAdapter; mock: BrokerAdapter },
+  mode: TradingMode = "paper"
 ): BrokerAdapter {
+  if (mode === "paper") {
+    return adapters.mock;
+  }
+
   switch (assetClass) {
     case "fx":
       return adapters.ig;

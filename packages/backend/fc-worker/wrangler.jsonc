@@ -25,5 +25,14 @@
       "binding": "EVENT_STREAM_SERVICE",
       "service": "trading-pod-event-stream"
     }
-  ]
+  ],
+  // Secrets (set via `wrangler secret put`):
+  //   INTERNAL_SERVICE_SECRET — shared auth token for service-to-service calls
+  //   IG_API_KEY — IG REST API key (for FX spread betting)
+  //   IG_API_SECRET — IG REST API password
+  //   KRAKEN_API_KEY — Kraken REST API key (for crypto spot)
+  //   KRAKEN_API_SECRET — Kraken REST API private key
+  "vars": {
+    "TRADING_MODE": "paper"
+  }
 }

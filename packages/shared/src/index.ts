@@ -109,3 +109,7 @@ export {
   forbidden,
   internalError,
 } from "./auth/index.js";
+
+// Logger
+export { createLogger } from "./logger.js";
+export type { LogLevel, LogEntry, LoggerOptions } from "./logger.js";

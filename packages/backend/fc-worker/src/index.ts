@@ -21,6 +21,8 @@ export interface Env {
   TREASURER_SERVICE: Fetcher;
   EVENT_STREAM_SERVICE: Fetcher;
   INTERNAL_SERVICE_SECRET: string;
+  /** "paper" (default) or "live" — controls broker adapter selection */
+  TRADING_MODE?: string;
 }
 
 export default {
@@ -29,7 +31,8 @@ export default {
 
     // Health check — public (no sensitive data)
     if (request.method === "GET" && url.pathname === "/health") {
-      return Response.json({ status: "ok", worker: "fc" });
+      const mode = env.TRADING_MODE === "live" ? "live" : "paper";
+      return Response.json({ status: "ok", worker: "fc", tradingMode: mode });
     }
 
     // All other endpoints require internal auth
@@ -155,6 +158,7 @@ async function handleSignals(request: Request, env: Env): Promise<Response> {
   return Response.json({
     received: signals.length,
     errors: errors.length > 0 ? errors : undefined,
+    tradingMode: env.TRADING_MODE === "live" ? "live" : "paper",
     message: "Signals received and logged. FC decision pipeline pending implementation.",
   });
 }

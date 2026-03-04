@@ -29,6 +29,7 @@ export {
 export type {
   BrokerAdapter,
   BrokerAdapterType,
+  TradingMode,
   IGConfig,
   KrakenConfig,
 } from "./execution_engine/broker_adapter.js";
@@ -44,9 +45,29 @@ export {
   runAllRiskChecks,
 } from "./risk_rules/rules.js";
 
+// Circuit Breaker
+export {
+  CircuitBreaker,
+  DEFAULT_CIRCUIT_BREAKER_CONFIG,
+} from "./circuit_breaker/circuit_breaker.js";
+export type {
+  CircuitBreakerConfig,
+  CircuitBreakerState,
+} from "./circuit_breaker/circuit_breaker.js";
+
 // Context Providers
 export { NewsFilter, createNewsFilter } from "./context_providers/news_filter.js";
 export { MarketStateClassifier, createMarketStateClassifier } from "./context_providers/market_state.js";
+
+// Currency Converter
+export {
+  CurrencyConverter,
+  DEFAULT_CONVERTER_CONFIG,
+} from "./currency/converter.js";
+export type {
+  ExchangeRate,
+  CurrencyConverterConfig,
+} from "./currency/converter.js";
 
 // Event Bus
 export { LocalEventBus } from "./event_bus/bus.js";
