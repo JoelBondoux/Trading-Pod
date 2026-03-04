@@ -31,10 +31,15 @@
       "readFrequency": "Every capital request"
     },
     "config:tax": {
-      "description": "Tax Collector configuration (reserve rate, annual exempt amount)",
+      "description": "Tax Collector configuration (reserve rate, annual exempt amount, exempt toggle)",
       "valueType": "TaxCollectorConfig (JSON)",
-      "writeFrequency": "Rarely (annual tax year changes)",
-      "readFrequency": "Every profitable crypto trade close"
+      "writeFrequency": "Rarely (annual tax year changes or user toggle)",
+      "readFrequency": "Every profitable crypto trade close",
+      "example": {
+        "reserveRate": 0.24,
+        "annualExemptAmount": 3000,
+        "useAnnualExempt": true
+      }
     },
     "config:webhook_secret": {
       "description": "Shared secret for validating TradingView webhook payloads",

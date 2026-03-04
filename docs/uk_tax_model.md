@@ -20,29 +20,55 @@ Trading-Pod operates in two distinct UK tax regimes:
 
 ## How the Tax Collector Works
 
-1. When a crypto spot trade closes **in profit**:
-   - If annual exempt remaining > 0: deduct from exempt amount first
-   - Apply 24% reserve rate on the taxable portion
+1. When a crypto spot trade closes **in profit**, the Tax Collector always records the gross profit to a running cumulative total (`totalGrossProfit`).
+
+2. Whether tax is reserved depends on the `useAnnualExempt` setting:
+
+### `useAnnualExempt: true` (default) — Cumulative Threshold Mode
+
+- All profits are recorded but **no CGT is reserved** until cumulative gross profits exceed the annual exempt amount (£3,000).
+- Once the threshold is crossed, only the portion above the threshold is taxed for the crossing trade; all subsequent profits are fully taxable.
+- This is the recommended mode for most users.
+
+### `useAnnualExempt: false` — Tax Every Trade Mode
+
+- The annual exempt amount is ignored entirely.
+- 24% CGT reserve is taken from **every** profitable crypto trade immediately.
+- Useful if you have other capital gains outside Trading-Pod and have already used your allowance.
+
+3. In both modes:
    - Reserve amount stored in D1 database
    - `TaxReservedEvent` emitted
-
-2. The reserve is an **approximation** — actual CGT calculation may differ:
+   - The reserve is an **approximation** — actual CGT calculation may differ
    - HMRC requires Section 104 pool / same-day & 30-day matching rules
-   - This system uses a simple flat 24% on each gain
    - Year-end reconciliation should use proper tax software (Koinly, CoinTracker, etc.)
 
 ## Annual Exempt Amount Logic
 
+### With `useAnnualExempt: true` (cumulative threshold)
+
 ```
 £3,000 annual exempt amount per tax year
 
-First £3,000 of crypto gains → no tax reserved
-Gains above £3,000 → 24% reserved on each additional gain
+All profits recorded — tax only starts once cumulative gains exceed £3,000
 
 Example:
-  Trade 1: £1,000 profit → £0 reserved (exempt remaining: £2,000)
-  Trade 2: £2,500 profit → first £2,000 exempt, £500 taxable → £120 reserved
-  Trade 3: £800 profit → fully taxable → £192 reserved
+  Trade 1: £1,000 profit → cumTotal £1,000 ≤ £3,000 → £0 reserved
+  Trade 2: £1,500 profit → cumTotal £2,500 ≤ £3,000 → £0 reserved
+  Trade 3: £1,200 profit → cumTotal £3,700 — crosses threshold
+           → taxable = £3,700 − £3,000 = £700 → £168 reserved
+  Trade 4: £800 profit  → cumTotal £4,500 → fully taxable → £192 reserved
+```
+
+### With `useAnnualExempt: false` (every trade taxed)
+
+```
+No exempt amount applied — every profit taxed immediately at 24%
+
+Example:
+  Trade 1: £1,000 profit → £240 reserved
+  Trade 2: £1,500 profit → £360 reserved
+  Trade 3: £1,200 profit → £288 reserved
 ```
 
 ## Tax Year Detection
@@ -68,6 +94,13 @@ In KV store under `config:tax`:
 ```json
 {
   "reserveRate": 0.24,
-  "annualExemptAmount": 3000
+  "annualExemptAmount": 3000,
+  "useAnnualExempt": true
 }
 ```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `reserveRate` | number | 0.24 | CGT reserve rate (24% for higher-rate taxpayers) |
+| `annualExemptAmount` | number | 3000 | Annual exempt amount in GBP |
+| `useAnnualExempt` | boolean | true | Whether to apply the cumulative threshold before taxing |

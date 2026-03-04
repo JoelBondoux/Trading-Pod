@@ -35,7 +35,9 @@ export class TaxCollector {
       taxYear: initialState?.taxYear ?? taxYear,
       totalReserved: initialState?.totalReserved ?? 0,
       totalTrades: initialState?.totalTrades ?? 0,
+      totalGrossProfit: initialState?.totalGrossProfit ?? 0,
       annualExemptRemaining: initialState?.annualExemptRemaining ?? config.annualExemptAmount,
+      useAnnualExempt: initialState?.useAnnualExempt ?? config.useAnnualExempt,
       updatedAt: now(),
     };
   }
@@ -53,9 +55,17 @@ export class TaxCollector {
   /**
    * Process a profitable crypto trade and calculate the tax reserve.
    *
+   * Behaviour depends on `useAnnualExempt`:
+   * - **true** (default): All profits are recorded. Tax is only reserved
+   *   once cumulative gross profits in the tax year exceed the annual
+   *   exempt amount (£3,000). For the trade that crosses the threshold,
+   *   only the portion above the threshold is taxed.
+   * - **false**: Every profitable trade is taxed immediately at the
+   *   configured reserve rate; the annual exempt amount is ignored.
+   *
    * @param grossProfit - Gross profit from the trade (must be positive)
    * @param executionId - Trade execution ID for audit trail
-   * @returns The reserve entry, or null if no tax is owed (within annual exempt amount)
+   * @returns The reserve entry, or null if no tax is owed
    */
   reserveFromProfit(
     grossProfit: number,
@@ -66,20 +76,37 @@ export class TaxCollector {
     // Check if we've moved to a new tax year
     this.checkTaxYearRollover();
 
-    // Apply annual exempt amount first
-    let taxableGain = grossProfit;
+    // Always track cumulative gross profit
+    this.state.totalGrossProfit += grossProfit;
+    this.state.totalTrades += 1;
+    this.state.updatedAt = now();
 
-    if (this.state.annualExemptRemaining > 0) {
-      const exemptUsed = Math.min(this.state.annualExemptRemaining, taxableGain);
-      this.state.annualExemptRemaining -= exemptUsed;
-      taxableGain -= exemptUsed;
-    }
+    let taxableGain: number;
 
-    if (taxableGain <= 0) {
-      // Entirely covered by annual exempt amount
-      this.state.totalTrades += 1;
-      this.state.updatedAt = now();
-      return null;
+    if (this.state.useAnnualExempt) {
+      // ---- Cumulative threshold mode ----
+      // Only start reserving tax once total gross profit exceeds the exempt amount.
+      const previousGross = this.state.totalGrossProfit - grossProfit;
+
+      if (this.state.totalGrossProfit <= this.config.annualExemptAmount) {
+        // Still within annual exempt — no tax owed
+        this.state.annualExemptRemaining =
+          this.config.annualExemptAmount - this.state.totalGrossProfit;
+        return null;
+      }
+
+      if (previousGross >= this.config.annualExemptAmount) {
+        // Already past the threshold — entire profit is taxable
+        taxableGain = grossProfit;
+      } else {
+        // This trade crosses the threshold — only tax the overshoot
+        taxableGain = this.state.totalGrossProfit - this.config.annualExemptAmount;
+      }
+
+      this.state.annualExemptRemaining = 0;
+    } else {
+      // ---- No exempt mode — tax every profit immediately ----
+      taxableGain = grossProfit;
     }
 
     // Reserve the configured rate on the taxable portion
@@ -96,8 +123,6 @@ export class TaxCollector {
     };
 
     this.state.totalReserved += reservedAmount;
-    this.state.totalTrades += 1;
-    this.state.updatedAt = now();
 
     return entry;
   }
@@ -109,19 +134,24 @@ export class TaxCollector {
     taxYear: string;
     totalReserved: number;
     totalTrades: number;
+    totalGrossProfit: number;
     annualExemptRemaining: number;
     annualExemptUsed: number;
+    useAnnualExempt: boolean;
     effectiveRate: number;
   } {
-    const annualExemptUsed =
-      this.config.annualExemptAmount - this.state.annualExemptRemaining;
+    const annualExemptUsed = this.state.useAnnualExempt
+      ? this.config.annualExemptAmount - this.state.annualExemptRemaining
+      : 0;
 
     return {
       taxYear: this.state.taxYear,
       totalReserved: this.state.totalReserved,
       totalTrades: this.state.totalTrades,
+      totalGrossProfit: this.state.totalGrossProfit,
       annualExemptRemaining: this.state.annualExemptRemaining,
       annualExemptUsed,
+      useAnnualExempt: this.state.useAnnualExempt,
       effectiveRate: this.config.reserveRate,
     };
   }
@@ -129,9 +159,10 @@ export class TaxCollector {
   private checkTaxYearRollover(): void {
     const currentTaxYear = getUKTaxYear(new Date());
     if (currentTaxYear !== this.state.taxYear) {
-      // New tax year — reset exempt amount, keep accumulated reserve
+      // New tax year — reset exempt amount and cumulative profits, keep accumulated reserve
       this.state.taxYear = currentTaxYear;
       this.state.annualExemptRemaining = this.config.annualExemptAmount;
+      this.state.totalGrossProfit = 0;
     }
   }
 }

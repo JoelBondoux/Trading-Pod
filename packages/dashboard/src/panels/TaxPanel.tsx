@@ -22,7 +22,9 @@ export function TaxPanel({ compact }: Props) {
     taxYear,
     totalReserved,
     totalTrades,
+    totalGrossProfit,
     annualExemptRemaining,
+    useAnnualExempt,
   } = taxState;
 
   if (compact) {
@@ -37,9 +39,15 @@ export function TaxPanel({ compact }: Props) {
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">Exempt left</span>
-            <span>£{annualExemptRemaining.toFixed(0)}</span>
+            <span className="text-gray-400">Gross profit</span>
+            <span>£{totalGrossProfit.toFixed(2)}</span>
           </div>
+          {useAnnualExempt && (
+            <div className="flex justify-between">
+              <span className="text-gray-400">Exempt left</span>
+              <span>£{annualExemptRemaining.toFixed(0)}</span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -49,10 +57,22 @@ export function TaxPanel({ compact }: Props) {
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">UK Tax Reserve (Crypto CGT)</h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="card">
           <div className="text-[11px] uppercase text-gray-500">Tax Year</div>
           <div className="text-xl font-bold mt-1">{taxYear}</div>
+        </div>
+
+        <div className="card">
+          <div className="text-[11px] uppercase text-gray-500">
+            Total Gross Profit
+          </div>
+          <div className="text-xl font-bold mt-1">
+            £{totalGrossProfit.toFixed(2)}
+          </div>
+          <div className="text-xs text-gray-500 mt-0.5">
+            cumulative crypto gains this year
+          </div>
         </div>
 
         <div className="card">
@@ -63,19 +83,23 @@ export function TaxPanel({ compact }: Props) {
             £{totalReserved.toFixed(2)}
           </div>
           <div className="text-xs text-gray-500 mt-0.5">
-            24% rate on gains above exempt threshold
+            24% rate on gains{useAnnualExempt ? " above exempt threshold" : ""}
           </div>
         </div>
 
         <div className="card">
           <div className="text-[11px] uppercase text-gray-500">
-            Annual Exempt Remaining
+            {useAnnualExempt ? "Annual Exempt Remaining" : "Annual Exempt"}
           </div>
           <div className="text-xl font-bold mt-1">
-            £{annualExemptRemaining.toFixed(0)}
+            {useAnnualExempt
+              ? `£${annualExemptRemaining.toFixed(0)}`
+              : "Disabled"}
           </div>
           <div className="text-xs text-gray-500 mt-0.5">
-            of £3,000 annual exempt amount
+            {useAnnualExempt
+              ? "of £3,000 — tax starts once exceeded"
+              : "every profit taxed immediately"}
           </div>
         </div>
 
@@ -97,6 +121,17 @@ export function TaxPanel({ compact }: Props) {
           <li>
             Crypto spot profits are subject to Capital Gains Tax at 24%.
           </li>
+          {useAnnualExempt ? (
+            <li>
+              Annual exempt threshold is <strong>enabled</strong> — tax is only
+              reserved once cumulative crypto gains exceed £3,000 per tax year.
+            </li>
+          ) : (
+            <li>
+              Annual exempt threshold is <strong>disabled</strong> — CGT is
+              reserved on every profitable crypto trade.
+            </li>
+          )}
           <li>
             The reserve is an <em>estimate</em>. Actual CGT calculation must be
             done at year-end using same-day / 30-day matching rules.

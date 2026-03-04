@@ -37,8 +37,14 @@ export interface TaxReserveState {
   /** Number of profitable trades contributing */
   totalTrades: number;
 
+  /** Cumulative gross profit from all crypto trades this tax year */
+  totalGrossProfit: number;
+
   /** Annual exempt amount remaining (starts at £3,000) */
   annualExemptRemaining: number;
+
+  /** Whether the annual exempt threshold is being applied */
+  useAnnualExempt: boolean;
 
   /** ISO 8601 timestamp of last update */
   updatedAt: string;
@@ -51,12 +57,22 @@ export interface TaxCollectorConfig {
 
   /** Annual exempt amount in GBP (£3,000 for 2025/26) */
   annualExemptAmount: number;
+
+  /**
+   * Whether to apply the annual exempt threshold.
+   * - `true` (default): Track all profits, only start reserving tax once
+   *   cumulative gains in the tax year exceed the annual exempt amount.
+   * - `false`: Reserve tax on every profitable crypto trade immediately,
+   *   ignoring the annual exempt amount entirely.
+   */
+  useAnnualExempt: boolean;
 }
 
 /** Default Tax Collector configuration */
 export const DEFAULT_TAX_CONFIG: TaxCollectorConfig = {
   reserveRate: 0.24,
   annualExemptAmount: 3000,
+  useAnnualExempt: true,
 };
 
 /**
