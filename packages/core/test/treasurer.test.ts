@@ -147,6 +147,20 @@ describe("Treasurer.returnCapital", () => {
     const result = t.returnCapital(ret);
     expect(result.assetClass).toBe("crypto");
   });
+
+  it("break-even trade (pnl=0) produces zero savings", () => {
+    const t = new Treasurer({ baseCapital: 10_000, scaleFactor: 0.01 });
+    const ret: CapitalReturn = {
+      executionId: "e-1",
+      capitalReturned: 100,
+      pnl: 0,
+      assetClass: "fx",
+      timestamp: new Date().toISOString(),
+    };
+    const result = t.returnCapital(ret);
+    expect(result.savingsAmount).toBe(0);
+    expect(result.taxableProfit).toBe(0);
+  });
 });
 
 // ---------------------------------------------------------------------------

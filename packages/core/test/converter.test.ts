@@ -40,4 +40,18 @@ describe("CurrencyConverter", () => {
     expect(DEFAULT_CONVERTER_CONFIG.fallbackRate).toBeGreaterThan(0.5);
     expect(DEFAULT_CONVERTER_CONFIG.fallbackRate).toBeLessThan(1.0);
   });
+
+  it("converts negative USD values correctly", () => {
+    const c = new CurrencyConverter();
+    c.setRate(0.80);
+    expect(c.usdToGbp(-100)).toBeCloseTo(-80);
+  });
+
+  it("handles zero rate gracefully", () => {
+    const c = new CurrencyConverter();
+    c.setRate(0);
+    expect(c.usdToGbp(100)).toBe(0);
+    // -50 * 0 = -0 in IEEE 754; verify with toBeCloseTo
+    expect(c.usdToGbp(-50)).toBeCloseTo(0);
+  });
 });

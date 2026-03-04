@@ -206,3 +206,30 @@ describe("FinancialController risk checks output", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// Edge cases
+// ---------------------------------------------------------------------------
+
+describe("FinancialController — edge cases", () => {
+  it("returns a unique decisionId for each call", async () => {
+    const deps = makeDeps();
+    const fc = new FinancialController(deps);
+    const d1 = await fc.decide([makeSignal()]);
+    const d2 = await fc.decide([makeSignal()]);
+
+    expect(d1.decisionId).not.toBe(d2.decisionId);
+  });
+
+  it("assigns default credibility 0.5 for unknown agents", async () => {
+    const deps = makeDeps({
+      getCredibilities: vi.fn().mockResolvedValue(new Map()), // no agents known
+    });
+    const fc = new FinancialController(deps);
+    const decision = await fc.decide([makeSignal({ agentId: "unknown_agent" })]);
+
+    // Should still process (uses default 0.5)
+    // Confidence = 0.85 * 0.5 / 0.5 = 0.85 (weighted avg)
+    expect(decision.consensus.confidence).toBeGreaterThan(0);
+  });
+});

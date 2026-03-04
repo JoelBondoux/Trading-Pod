@@ -122,3 +122,40 @@ describe("CircuitBreaker defaults", () => {
     expect(DEFAULT_CIRCUIT_BREAKER_CONFIG.cooldownMinutes).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Edge cases
+// ---------------------------------------------------------------------------
+
+describe("CircuitBreaker — edge cases", () => {
+  it("treats pnl=0 as a non-loss (resets consecutive counter)", () => {
+    const cb = new CircuitBreaker(10_000, {
+      maxConsecutiveLosses: 3,
+      maxDailyDrawdownPercent: 1.0,
+      cooldownMinutes: 0,
+    });
+
+    cb.recordOutcome(-10);
+    cb.recordOutcome(-10);
+    cb.recordOutcome(0); // pnl=0 is >= 0, resets streak
+
+    expect(cb.canTrade().allowed).toBe(true);
+    expect(cb.getState().consecutiveLosses).toBe(0);
+  });
+
+  it("exactly-at-boundary drawdown trips circuit breaker (>= check)", () => {
+    const cb = new CircuitBreaker(10_000, {
+      maxConsecutiveLosses: 100,
+      maxDailyDrawdownPercent: 0.05,
+      cooldownMinutes: 0,
+    });
+
+    // 499 < 500 → still allowed
+    cb.recordOutcome(-499);
+    expect(cb.canTrade().allowed).toBe(true);
+
+    // 499 + 1 = 500 = exactly 5% → trips
+    cb.recordOutcome(-1);
+    expect(cb.canTrade().allowed).toBe(false);
+  });
+});
