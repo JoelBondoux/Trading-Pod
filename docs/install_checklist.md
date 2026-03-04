@@ -172,17 +172,22 @@ A step-by-step guide to go from zero to a running Trading-Pod. Tick each box as 
 ## Phase 5 — Deploy the Backend Workers
 
 > Deploy all 5 workers to Cloudflare's edge network.
+>
+> **Order matters!** Workers with service bindings must be deployed *after*
+> the workers they reference, or you'll get error 10143.
 
-- [ ] **Deploy FC worker**
-  ```bash
-  cd packages/backend/fc-worker
-  npx wrangler deploy
-  cd ../../..
-  ```
+**Step 1 — Leaf workers** (no service bindings — deploy first, any order):
 
 - [ ] **Deploy Treasurer worker**
   ```bash
   cd packages/backend/treasurer-worker
+  npx wrangler deploy
+  cd ../../..
+  ```
+
+- [ ] **Deploy Event Stream worker** (WebSocket server)
+  ```bash
+  cd packages/backend/event-stream-worker
   npx wrangler deploy
   cd ../../..
   ```
@@ -194,16 +199,20 @@ A step-by-step guide to go from zero to a running Trading-Pod. Tick each box as 
   cd ../../..
   ```
 
-- [ ] **Deploy Webhook worker**
+**Step 2 — FC worker** (depends on Treasurer + Event Stream):
+
+- [ ] **Deploy FC worker**
   ```bash
-  cd packages/backend/webhook-worker
+  cd packages/backend/fc-worker
   npx wrangler deploy
   cd ../../..
   ```
 
-- [ ] **Deploy Event Stream worker** (WebSocket server)
+**Step 3 — Webhook worker** (depends on FC — deploy **last**):
+
+- [ ] **Deploy Webhook worker**
   ```bash
-  cd packages/backend/event-stream-worker
+  cd packages/backend/webhook-worker
   npx wrangler deploy
   cd ../../..
   ```
@@ -349,6 +358,7 @@ Once everything is deployed, confirm each piece is working:
 | Dashboard shows "Disconnected" | The event-stream-worker isn't deployed yet, or `VITE_WS_URL` is wrong |
 | `D1_ERROR: no such table` | You forgot to run the schema: `npx wrangler d1 execute trading-pod-db --file=packages/backend/d1-schema.sql` |
 | Worker deploy fails with binding error | Check that `database_id` and `kv_namespace_id` are set correctly in `wrangler.jsonc` |
+| Deploy fails: "Service binding references Worker which was not found" (error 10143) | You deployed in the wrong order — deploy leaf workers first (treasurer, event-stream, savings), then fc-worker, then webhook-worker last. See Phase 5 above. |
 | TradingView webhook returns 401 | Your `secret` in the alert body doesn't match `config:webhook_secret` in KV |
 | TradingView webhook returns 403 | The request isn't coming from a TradingView IP — check the IP whitelist |
 

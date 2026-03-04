@@ -80,13 +80,20 @@ npx wrangler kv key put --namespace-id=<id> "config:webhook_secret" '"your-secre
 
 ### 6. Deploy Workers
 
+> **Order matters!** Workers with service bindings must be deployed *after*
+> the workers they reference. Deploy leaf workers first, then dependents.
+
 ```bash
-# Deploy each worker
-cd packages/backend/fc-worker && npx wrangler deploy
-cd packages/backend/treasurer-worker && npx wrangler deploy
-cd packages/backend/savings-worker && npx wrangler deploy
-cd packages/backend/webhook-worker && npx wrangler deploy
-cd packages/backend/event-stream-worker && npx wrangler deploy
+# 1. Leaf workers (no service bindings — deploy first, any order)
+cd packages/backend/treasurer-worker    && npx wrangler deploy && cd ../../..
+cd packages/backend/event-stream-worker && npx wrangler deploy && cd ../../..
+cd packages/backend/savings-worker      && npx wrangler deploy && cd ../../..
+
+# 2. FC worker (depends on treasurer + event-stream)
+cd packages/backend/fc-worker           && npx wrangler deploy && cd ../../..
+
+# 3. Webhook worker (depends on fc-worker) — deploy LAST
+cd packages/backend/webhook-worker      && npx wrangler deploy && cd ../../..
 ```
 
 ### 7. Set Worker Secrets
