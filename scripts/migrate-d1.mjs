@@ -53,11 +53,15 @@ try {
 
 const schema = readFileSync(SCHEMA_PATH, "utf-8");
 
-// Split into individual statements (D1 execute runs one at a time)
+// Strip SQL comment lines, then split into individual statements
+// (D1 execute runs one statement at a time)
 const statements = schema
+  .split("\n")
+  .filter((line) => !line.trimStart().startsWith("--"))
+  .join("\n")
   .split(";")
   .map((s) => s.trim())
-  .filter((s) => s.length > 0 && !s.startsWith("--"));
+  .filter((s) => s.length > 0);
 
 console.log(`\n📦  Trading-Pod D1 Migration`);
 console.log(`   Database:   ${DB_NAME}`);

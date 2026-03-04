@@ -129,14 +129,23 @@ A step-by-step guide to go from zero to a running Trading-Pod. Tick each box as 
   - `packages/backend/savings-worker/wrangler.jsonc`
 
 - [ ] **Apply the database schema**
+  
+  Preview what will run first:
+  ```bash
+  node scripts/migrate-d1.mjs --dry-run
+  ```
+  ✅ You should see 16 statements (9 CREATE TABLE + 7 CREATE INDEX).
+
+  Then apply to production:
   ```bash
   node scripts/migrate-d1.mjs
   ```
-  Or manually: `npx wrangler d1 execute trading-pod-db --file=packages/backend/d1-schema.sql`
-  
-  For local dev, use: `node scripts/migrate-d1.mjs --local`
-  
-  For a dry run: `node scripts/migrate-d1.mjs --dry-run`
+  ✅ You should see `Migration complete: 16 succeeded, 0 failed`.
+
+  For local development, use:
+  ```bash
+  node scripts/migrate-d1.mjs --local
+  ```
 
 - [ ] **Create the KV namespace**
   ```bash
