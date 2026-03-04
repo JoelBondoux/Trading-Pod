@@ -39,9 +39,18 @@ npx wrangler d1 create trading-pod-db
 
 ### 3. Apply D1 Schema
 
+Use the migration script (recommended):
+```bash
+node scripts/migrate-d1.mjs
+```
+
+Or manually:
 ```bash
 npx wrangler d1 execute trading-pod-db --file=packages/backend/d1-schema.sql
 ```
+
+For local development: `node scripts/migrate-d1.mjs --local`
+For a dry run: `node scripts/migrate-d1.mjs --dry-run`
 
 ### 4. Create KV Namespace
 
@@ -83,12 +92,27 @@ cd packages/backend/event-stream-worker && npx wrangler deploy
 ### 7. Set Worker Secrets
 
 ```bash
-# In each worker directory that needs them
+# Internal service secret (same value on ALL workers)
+wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-fc
+wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-treasurer
+wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-savings
+wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-event-stream
+wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-webhook
+
+# Dashboard token (event-stream worker only)
+wrangler secret put DASHBOARD_TOKEN --name trading-pod-event-stream
+
+# Broker API keys (only on fc-worker)
 npx wrangler secret put IG_API_KEY
 npx wrangler secret put IG_USERNAME
 npx wrangler secret put IG_PASSWORD
 npx wrangler secret put KRAKEN_API_KEY
 npx wrangler secret put KRAKEN_API_SECRET
+```
+
+Generate strong secrets:
+```bash
+node -e "console.log(crypto.randomUUID() + crypto.randomUUID())"
 ```
 
 ### 8. Deploy Dashboard to Pages
@@ -131,3 +155,24 @@ Workers communicate via Cloudflare service bindings (zero-latency, no HTTP overh
 - `fc-worker` → `event-stream-worker` (broadcast events)
 
 These are configured in each worker's `wrangler.jsonc`.
+
+## Trading Mode
+
+All workers ship with `TRADING_MODE=paper` by default (set in `wrangler.jsonc` vars). In paper mode, `selectBrokerForAsset()` always returns `MockBrokerAdapter` — no real orders are placed.
+
+To switch to live trading, update the `vars` section in each worker's `wrangler.jsonc`:
+```jsonc
+"vars": {
+  "TRADING_MODE": "live"
+}
+```
+
+## Structured Logging
+
+All workers use a structured JSON logger (`createLogger` from `@trading-pod/shared`). Each log entry includes:
+- `timestamp` — ISO 8601
+- `level` — debug/info/warn/error
+- `worker` — which worker emitted the log
+- `correlationId` — for tracing requests across workers
+
+Logs are visible in the Cloudflare dashboard under Workers → Logs.

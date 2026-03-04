@@ -104,3 +104,19 @@ In KV store under `config:tax`:
 | `reserveRate` | number | 0.24 | CGT reserve rate (24% for higher-rate taxpayers) |
 | `annualExemptAmount` | number | 3000 | Annual exempt amount in GBP |
 | `useAnnualExempt` | boolean | true | Whether to apply the cumulative threshold before taxing |
+
+## USD → GBP Currency Conversion
+
+Crypto spot profits from Kraken are denominated in GBP pairs (e.g., `XBTGBP`), but if you trade USD pairs, the `CurrencyConverter` class handles conversion:
+
+- Fetches live GBP/USD rate from Kraken’s public ticker API (`/0/public/Ticker?pair=GBPUSD`)
+- Rate is cached with a configurable refresh interval (default: 60 seconds)
+- If the API is unavailable, a fallback rate of 0.79 is used
+- Conversion is applied **before** the Tax Collector calculates the CGT reserve
+
+```typescript
+const converter = new CurrencyConverter();
+const gbpProfit = await converter.usdToGbp(usdProfit);
+```
+
+This ensures UK CGT reserves are calculated on the correct GBP amount regardless of the trading pair's quote currency.

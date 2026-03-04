@@ -57,6 +57,28 @@ For crypto trades, the Tax Collector reserves ~24% of gains:
 - Maximum stop-loss distance enforced by risk rules
 - Position sizing based on capped scale factor × base capital
 
+## Layer 7: Loss Circuit Breaker
+
+Automatic trading halt when losses accumulate:
+
+- **3 consecutive losses** → circuit breaker trips
+- **5% daily drawdown** → circuit breaker trips
+- When tripped, `canTrade()` returns `false` — all new trade requests are blocked
+- Optional cooldown period for automatic resume (default: manual reset only)
+- Day-boundary auto-reset clears consecutive-loss counter at midnight
+- Configurable via `CircuitBreakerConfig`:
+  - `maxConsecutiveLosses` (default: 3)
+  - `maxDailyDrawdownPercent` (default: 0.05 = 5%)
+  - `cooldownMinutes` (default: 0 = manual reset)
+
+## Layer 8: Paper Trading Mode
+
+- `TRADING_MODE=paper` is the **default** for all workers
+- When active, `selectBrokerForAsset()` always returns `MockBrokerAdapter`
+- No real orders are placed on IG or Kraken
+- Allows full end-to-end system testing with real market signals
+- Switch to `TRADING_MODE=live` in `wrangler.jsonc` only when confident
+
 ## Emergency Controls
 
 The dashboard Control Panel provides **server-side enforced** controls:
@@ -77,3 +99,5 @@ These controls operate at the backend level — even if the dashboard disconnect
 | Profitable gains consumed by losses | Savings Manager locks 50% of profits permanently |
 | Tax underpayment | Tax Collector reserves 24% of crypto gains proactively |
 | Trading in dangerous conditions | Market regime + news window checks block entries |
+| Losing streak drains capital | Circuit breaker halts trading after 3 consecutive losses or 5% drawdown |
+| Accidental live trading | Paper mode is ON by default — must explicitly set `TRADING_MODE=live` |

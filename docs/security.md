@@ -15,6 +15,8 @@ Trading-Pod is designed so that **no third party can access funds, execute trade
 | Attacker discovers worker URLs | Even with the URL, all endpoints (except `/health`) return 403 without valid auth |
 | Compromised dependency | CI runs `pnpm audit` + TruffleHog secret scanning on every push/PR |
 | Operator loses dashboard connection | Pause/freeze state is stored server-side in KV — persists independently of dashboard |
+| Accidental live trading | Paper mode (`TRADING_MODE=paper`) is the default — all orders go through MockBrokerAdapter |
+| Losing streak drains capital | Circuit breaker auto-halts after 3 consecutive losses or 5% daily drawdown |
 
 ## Authentication Architecture
 
@@ -117,7 +119,7 @@ All workers return **generic error responses** to external callers:
 { "error": "Internal server error" }
 ```
 
-Full error details are logged server-side only via `console.error()` (visible in Cloudflare Workers logs, not exposed to callers).
+Full error details are logged server-side via the **structured JSON logger** (`createLogger`). Each log entry includes a `correlationId` for tracing requests across workers. Logs are visible in Cloudflare Workers logs but never exposed to callers.
 
 ## IP Allowlisting
 
@@ -156,6 +158,8 @@ These persist independently of the dashboard — even if the browser closes, the
 | Secret committed to git | `.gitignore` excludes `.env*`; CI runs TruffleHog |
 | Malicious dependency | `pnpm audit` in CI; `--frozen-lockfile` prevents supply chain tampering |
 | Dashboard controls bypassed | Pause/freeze enforced server-side in FC worker, not client-side |
+| Live trading without intent | Paper mode is default; must explicitly set `TRADING_MODE=live` |
+| Cascading losses | Circuit breaker halts trading after 3 consecutive losses or 5% drawdown |
 
 ## Self-Upgrade Security
 

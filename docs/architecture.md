@@ -44,6 +44,28 @@ Routes approved decisions to the correct broker based on asset class:
 - FX → IG (spread betting, REST API)
 - Crypto → Kraken (spot, REST API)
 
+Supports **paper trading mode** (`TRADING_MODE=paper`, the default) which routes all orders through a `MockBrokerAdapter` that simulates fills without touching real brokers.
+
+### Circuit Breaker
+Automatic loss-protection gate that sits between the FC and Execution Engine:
+- Trips after **3 consecutive losing trades** or **5% daily drawdown**
+- When tripped, `canTrade()` returns `false` — no new trades are allowed
+- Optional cooldown period for automatic resume
+- Resets automatically at day boundaries
+
+### Currency Converter
+Converts USD-denominated crypto profits to GBP for accurate UK CGT calculation:
+- Fetches live GBP/USD rate from Kraken’s public ticker API
+- Rate cached with configurable refresh interval (default 60s)
+- Fallback rate (0.79) used if API is unavailable
+
+### Structured Logger
+JSON-based structured logging for all Cloudflare Workers:
+- Each log entry includes `timestamp`, `level`, `worker`, `msg`, `correlationId`
+- Configurable minimum log level (`debug` / `info` / `warn` / `error`)
+- `child()` method creates sub-loggers with inherited context
+- Enables correlation tracking across worker-to-worker calls
+
 ### Event Bus
 Real-time event streaming via Cloudflare Durable Objects with Hibernation API. WebSocket connections from dashboard clients. All system events are broadcast to connected dashboards.
 
@@ -80,3 +102,20 @@ Dashboard is deployed to Cloudflare Pages as a static React SPA.
 
 - **D1** (SQLite): All transactional data — trades, decisions, credibility, treasurer state, savings, tax reserves, audit log
 - **KV**: Read-heavy configuration — risk rules, agent config, webhook secrets
+
+## Testing
+
+- **119 unit tests** across 8 test files using Vitest
+- Coverage: credibility scoring, risk rules, tax collector, treasurer, FC pipeline, circuit breaker, currency converter, shared utilities
+- Run with `pnpm test` from the monorepo root
+- CI runs tests automatically on every push/PR
+
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `pnpm test` | Run all 119 unit tests |
+| `pnpm -r typecheck` | Typecheck all 9 packages |
+| `pnpm -r build` | Build all packages |
+| `node scripts/migrate-d1.mjs` | Apply D1 schema (supports `--local`, `--env`, `--dry-run`) |
+| `node scripts/upgrade.mjs` | Self-upgrade from GitHub + typecheck |

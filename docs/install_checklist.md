@@ -51,6 +51,19 @@ A step-by-step guide to go from zero to a running Trading-Pod. Tick each box as 
   ```
   ✅ You should see all 9 packages say `Done` with no errors.
 
+- [ ] **Run the test suite**
+  ```bash
+  pnpm test
+  ```
+  ✅ You should see 119 tests pass across 8 test files.
+
+- [ ] **Copy the environment template**
+  ```bash
+  cp .env.example .env
+  cp packages/dashboard/.env.example packages/dashboard/.env
+  ```
+  Edit the `.env` files to fill in your values. These files are git-ignored.
+
 ---
 
 ## Phase 3 — Run the Dashboard Locally
@@ -102,8 +115,13 @@ A step-by-step guide to go from zero to a running Trading-Pod. Tick each box as 
 
 - [ ] **Apply the database schema**
   ```bash
-  npx wrangler d1 execute trading-pod-db --file=packages/backend/d1-schema.sql
+  node scripts/migrate-d1.mjs
   ```
+  Or manually: `npx wrangler d1 execute trading-pod-db --file=packages/backend/d1-schema.sql`
+  
+  For local dev, use: `node scripts/migrate-d1.mjs --local`
+  
+  For a dry run: `node scripts/migrate-d1.mjs --dry-run`
 
 - [ ] **Create the KV namespace**
   ```bash
@@ -172,6 +190,21 @@ A step-by-step guide to go from zero to a running Trading-Pod. Tick each box as 
   https://fc-worker.your-subdomain.workers.dev
   ```
   📝 Write these down — you'll need the event-stream-worker URL for the dashboard.
+
+- [ ] **Set worker secrets**
+  ```bash
+  # Internal service secret (same value on ALL workers)
+  wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-fc
+  wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-treasurer
+  wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-savings
+  wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-event-stream
+  wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-webhook
+
+  # Dashboard token (event-stream worker only)
+  wrangler secret put DASHBOARD_TOKEN --name trading-pod-event-stream
+  ```
+
+> ⚠️ **Paper mode is ON by default.** The `TRADING_MODE` variable in each worker's `wrangler.jsonc` is set to `"paper"`. All orders go through `MockBrokerAdapter`. Set to `"live"` only when you are ready to trade with real money.
 
 ---
 
@@ -284,6 +317,7 @@ Once everything is deployed, confirm each piece is working:
 
 | Problem | Solution |
 |---------|----------|
+| Tests fail | Run `pnpm test` — check error output for details |
 | `pnpm: command not found` | Run `npm install -g pnpm@9` |
 | `wrangler: command not found` | Run `npm install -g wrangler` |
 | Typecheck fails on `shared` | Make sure you ran `pnpm --filter @trading-pod/shared build` first |

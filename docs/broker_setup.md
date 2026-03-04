@@ -120,3 +120,19 @@ wrangler secret put KRAKEN_API_SECRET
 # TradingView
 wrangler secret put TRADINGVIEW_WEBHOOK_SECRET
 ```
+
+## Paper Trading Mode
+
+Trading-Pod ships in **paper mode by default** (`TRADING_MODE=paper` in `wrangler.jsonc`). In this mode:
+
+- `selectBrokerForAsset()` returns `MockBrokerAdapter` regardless of asset class
+- No real orders are placed on IG or Kraken
+- The full FC pipeline, risk checks, capital gating, and event broadcasting still run
+- Perfect for end-to-end testing with real market signals
+
+To switch to live trading:
+1. Set `TRADING_MODE` to `"live"` in each worker's `wrangler.jsonc`
+2. Ensure broker API secrets are configured (see above)
+3. Re-deploy the affected workers
+
+> ⚠️ **Start with demo broker accounts** (IG demo environment, Kraken with small balance) before going fully live.

@@ -96,6 +96,8 @@ Trade closes with profit
 | **Crypto Broker** | Kraken (REST API, spot only) |
 | **Signal Source** | TradingView webhooks |
 | **Validation** | Zod runtime schemas |
+| **Testing** | Vitest (119 unit tests) |
+| **CI** | GitHub Actions (typecheck + audit + tests) |
 
 ## Repository Structure
 
@@ -114,7 +116,11 @@ trading-pod/
 │   │   ├── d1-schema.sql        # D1 database schema
 │   │   └── kv-schema.json       # KV key patterns
 │   └── dashboard/       # React SPA (Cloudflare Pages)
+├── scripts/             # Migration & upgrade scripts
 ├── docs/                # Architecture & setup documentation
+├── .github/workflows/   # CI pipeline
+├── .env.example         # Environment variable template
+├── vitest.config.ts     # Test configuration
 ├── tsconfig.base.json   # Shared TypeScript config
 ├── pnpm-workspace.yaml  # Monorepo workspace definition
 └── package.json         # Root scripts & dev dependencies
@@ -153,6 +159,8 @@ $$S_{new} = \alpha \cdot R + (1 - \alpha) \cdot S_{old}$$
 4. **Savings Manager** — one-way vault, funds never return to the trading pool
 5. **Tax Collector** — reserves 24% of crypto gains for HMRC CGT
 6. **Risk Rules** — min R:R 1.5, max SL 3%, max 5 trades/day, blocked regimes
+7. **Loss Circuit Breaker** — auto-pauses trading after 3 consecutive losses or 5% daily drawdown
+8. **Paper Trading Mode** — `TRADING_MODE=paper` (default) forces all orders through MockBrokerAdapter
 
 ## UK Tax Compliance
 
@@ -173,19 +181,28 @@ cd Trading-Pod
 # Install dependencies
 pnpm install
 
-# Typecheck
-pnpm -r typecheck
-
 # Build all packages
 pnpm -r build
 
+# Typecheck
+pnpm -r typecheck
+
+# Run tests (119 unit tests)
+pnpm test
+
 # Start dashboard dev server
 pnpm --filter @trading-pod/dashboard dev
+
+# Apply D1 schema (local)
+node scripts/migrate-d1.mjs --local
 
 # Deploy a worker (e.g., fc-worker)
 cd packages/backend/fc-worker
 npx wrangler deploy
 ```
+
+> **Paper mode is ON by default.** Set `TRADING_MODE=live` in `wrangler.jsonc` when ready for real trading.
+> Copy `.env.example` to `.env` for local development variables.
 
 ## Monthly Cost
 
