@@ -55,7 +55,7 @@ A step-by-step guide to go from zero to a running Trading-Pod. Tick each box as 
   ```bash
   pnpm test
   ```
-  ✅ You should see 263 tests pass across 21 test files.
+  ✅ You should see 272 tests pass across 21 test files.
 
 - [ ] **Copy the environment template**
 

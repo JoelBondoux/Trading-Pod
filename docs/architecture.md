@@ -105,7 +105,7 @@ Dashboard is deployed to Cloudflare Pages as a static React SPA.
 
 ## Testing
 
-- **263 unit tests** across 21 test files using Vitest
+- **272 unit tests** across 21 test files using Vitest
 - Coverage: credibility scoring, risk rules, tax collector, treasurer, FC pipeline, circuit breaker, currency converter, broker adapters, shared utilities
 - Run with `pnpm test` from the monorepo root
 - CI runs tests automatically on every push/PR
@@ -114,7 +114,7 @@ Dashboard is deployed to Cloudflare Pages as a static React SPA.
 
 | Script | Purpose |
 |--------|--------|
-| `pnpm test` | Run all 263 unit tests |
+| `pnpm test` | Run all 272 unit tests |
 | `pnpm -r typecheck` | Typecheck all 9 packages |
 | `pnpm -r build` | Build all packages |
 | `node scripts/migrate-d1.mjs` | Apply D1 schema (supports `--local`, `--env`, `--dry-run`) |

@@ -58,6 +58,25 @@ Compact summary of all subsystems on a single page. Quick glance at system healt
 - Per-agent freeze/unfreeze toggles
 - Real-time event log (last 100 events)
 
+### 10. Settings
+- Account info (Google profile, email)
+- Trading mode toggle (paper / live)
+- Broker selector per asset class:
+  - FX: IG, Capital.com, OANDA, or Mock
+  - Crypto: Capital.com, OANDA, or Mock
+- Preferences saved to FC worker KV
+- Team invites placeholder (coming soon)
+
+## Authentication
+
+- **Google OAuth** via Google Identity Services (GIS)
+- Client-side JWT decode — no server callback needed
+- Email allowlist via `VITE_ALLOWED_EMAILS` env var (comma-separated)
+- Session stored in `sessionStorage`, auto-expires with JWT
+- Auth is optional — when `VITE_GOOGLE_CLIENT_ID` is unset, the dashboard is open
+- Login page renders Google Sign-In button with "Sign in with Google" prompt
+- Sidebar shows user avatar, name, email, and sign-out button when logged in
+
 ## Theme
 
 Dark theme optimized for trading:

@@ -1,7 +1,7 @@
 # 🤖 Trading-Pod
 
 > Fully automated, low-risk, multi-agent trading system with independent signal agents, deterministic Financial Controller, capital-gated Treasurer, and real-time dashboard.
-> UK-compliant: FX via IG spread betting (tax-free) + Crypto via Kraken spot (CGT applies).
+> UK-compliant: FX via IG spread betting (tax-free) + Crypto via Capital.com / OANDA CFDs (CGT applies). Configurable broker selection per asset class. Google OAuth dashboard login.
 
 ---
 
@@ -32,7 +32,8 @@ flowchart TD
 
     subgraph Brokers
         IG[IG – FX Spread Betting]
-        KR[Kraken – Crypto Spot]
+        CC[Capital.com – FX & Crypto CFDs]
+        OA[OANDA – FX Specialist]
     end
 
     subgraph Infrastructure
@@ -52,7 +53,8 @@ flowchart TD
     FC -->|Capital Request| TR
     TR -->|Approved| EE
     EE --> IG
-    EE --> KR
+    EE --> CC
+    EE --> OA
     EE -->|Trade Closed| TR
     TR -->|50% profit| SM
     TR -->|Crypto profit| TC
@@ -75,7 +77,7 @@ flowchart TD
 Trade closes with profit
   ├── FX spread bet → TAX-FREE
   │     └── Profit → Treasurer (50%) + Savings (50%)
-  └── Crypto spot → CGT applies
+  └── Crypto CFD → CGT applies
         ├── Tax Collector reserves ~24% (after £3,000 annual exempt)
         └── Remaining → Treasurer (50%) + Savings (50%)
 ```
@@ -92,11 +94,12 @@ Trade closes with profit
 | **Real-time** | Cloudflare Durable Objects (WebSocket) |
 | **Dashboard** | React 18 + Vite 5 + TailwindCSS + Recharts + Zustand |
 | **Hosting** | Cloudflare Pages |
-| **FX Broker** | IG (REST API, spread betting, FCA-regulated) |
-| **Crypto Broker** | Kraken (REST API, spot only) |
+| **FX Broker** | IG, Capital.com, or OANDA (configurable per asset class) |
+| **Crypto Broker** | Capital.com or OANDA (configurable per asset class) |
+| **Auth** | Google OAuth (email allowlist) |
 | **Signal Source** | TradingView webhooks |
 | **Validation** | Zod runtime schemas |
-| **Testing** | Vitest (119 unit tests) |
+| **Testing** | Vitest (272 unit tests) |
 | **CI** | GitHub Actions (typecheck + audit + tests) |
 
 ## Repository Structure
@@ -165,7 +168,7 @@ $$S_{new} = \alpha \cdot R + (1 - \alpha) \cdot S_{old}$$
 ## UK Tax Compliance
 
 - **FX spread bets** → tax-free (classified as gambling by HMRC)
-- **Crypto spot** → Capital Gains Tax at 24% (higher rate)
+- **Crypto CFDs** → Capital Gains Tax at 24% (higher rate)
 - **£3,000 annual exempt amount** (2025/26 onwards)
 - Tax Collector reserves approximate CGT as cash-flow buffer
 - Actual year-end calculation: use Koinly or similar (same-day + 30-day matching rules)
@@ -187,7 +190,7 @@ pnpm -r build
 # Typecheck
 pnpm -r typecheck
 
-# Run tests (119 unit tests)
+# Run tests (272 unit tests)
 pnpm test
 
 # Start dashboard dev server
@@ -211,7 +214,8 @@ npx wrangler deploy
 | TradingView Essential | ~$13/mo |
 | Cloudflare Workers/D1/KV/Pages | Free tier |
 | IG | Free (spread-only) |
-| Kraken | Free (commission on trades) |
+| Capital.com | Free (spread-only) |
+| OANDA | Free (spread-only) |
 | GitHub | Free |
 | **Total** | **~$13/mo** |
 
