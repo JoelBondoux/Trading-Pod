@@ -142,6 +142,10 @@ npx wrangler pages deploy dist
 
 In Cloudflare Pages dashboard, set:
 - `VITE_WS_URL` = `wss://event-stream-worker.<your-subdomain>.workers.dev/ws`
+- `VITE_FC_URL` = `https://fc-worker.<your-subdomain>.workers.dev`
+- `VITE_INTERNAL_SECRET` = same value as `INTERNAL_SERVICE_SECRET`
+- `VITE_GOOGLE_CLIENT_ID` = your Google OAuth Client ID (optional — leave blank to disable auth)
+- `VITE_ALLOWED_EMAILS` = comma-separated allowed emails (optional — leave blank to allow any Google account)
 
 ## Free Tier Limits
 

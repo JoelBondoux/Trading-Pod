@@ -265,6 +265,52 @@ A step-by-step guide to go from zero to a running Trading-Pod. Tick each box as 
 
 ---
 
+## Phase 6b — Set Up Google OAuth (Optional but Recommended)
+
+> Adds login protection to your dashboard. Without this, the dashboard is open to anyone with the URL.
+
+- [ ] **Create a Google Cloud project**
+  - Go to [console.cloud.google.com](https://console.cloud.google.com)
+  - Create a new project (e.g., "Trading-Pod")
+
+- [ ] **Configure the OAuth consent screen**
+  - APIs & Services → OAuth consent screen
+  - User Type: **External** (or Internal if using Google Workspace)
+  - Fill in the app name and contact email
+  - No scopes needed (we only use the ID token)
+
+- [ ] **Create an OAuth Client ID**
+  - APIs & Services → Credentials → Create Credentials → OAuth client ID
+  - Application type: **Web application**
+  - Authorized JavaScript origins: add your Cloudflare Pages URL (e.g., `https://trading-pod-dashboard.pages.dev`)
+  - Also add `http://localhost:3000` for local development
+  - 📝 **Copy the Client ID** (looks like `123456789-abcdef.apps.googleusercontent.com`)
+
+- [ ] **Set dashboard environment variables**
+  In Cloudflare Pages → Settings → Environment Variables, add:
+  - `VITE_GOOGLE_CLIENT_ID` = your Client ID from above
+  - `VITE_ALLOWED_EMAILS` = comma-separated list of allowed emails (e.g., `you@gmail.com,friend@gmail.com`)
+
+- [ ] **Update local `.env` too**
+  In `packages/dashboard/.env`:
+  ```dotenv
+  VITE_GOOGLE_CLIENT_ID=your-client-id-here
+  VITE_ALLOWED_EMAILS=you@gmail.com
+  ```
+
+- [ ] **Re-deploy the dashboard**
+  ```bash
+  pnpm --filter @trading-pod/dashboard build
+  npx wrangler pages deploy packages/dashboard/dist
+  ```
+
+- [ ] **Verify login works**
+  - Visit your dashboard URL — you should see the Google Sign-In page
+  - Sign in with an allowed email — you should see the dashboard
+  - Sign in with a non-allowed email — you should see an "Access denied" error
+
+---
+
 ## Phase 7 — Set Up Broker Accounts (When Ready to Trade)
 
 > ⚠️ **Start with demo/paper accounts first!** Don't connect real money until you're confident.
