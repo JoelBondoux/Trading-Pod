@@ -50,57 +50,93 @@
 
 ---
 
-## Kraken (Crypto Spot)
+## Capital.com (FX & Crypto CFDs)
 
-### Why Kraken?
+### Why Capital.com?
 
-- Long-standing exchange with good UK regulatory status
-- Spot trading only (no crypto CFDs for UK retail — FCA ban)
-- REST API with HMAC-SHA512 authentication
-- No minimum deposit
-- Reasonable maker/taker fees
+- FCA-regulated
+- CFD trading for both FX and crypto
+- REST API with OAuth session tokens
+- Free demo account for development
+- Competitive spreads on major pairs
 
 ### Setup Steps
 
-1. **Create account** at [kraken.com](https://www.kraken.com)
-2. **Complete KYC** (identity verification required)
-3. **Generate API key**:
-   - Settings → Security → API
-   - Create key with "Create/Modify Orders" + "Query Open Orders & Trades" + "Query Closed Orders & Trades" permissions
-   - **Do NOT enable "Withdraw Funds"** permission
-4. **Configure in Trading-Pod**:
-   - Set `KRAKEN_API_KEY`, `KRAKEN_API_SECRET` as Worker secrets
+1. **Create account** at [capital.com](https://capital.com)
+2. **Open a CFD account**
+3. **Generate API credentials**:
+   - Capital.com uses email + password + API key authentication
+   - Go to Settings → API → generate an API key
+4. **Use demo mode first**:
+   - API endpoint (demo): `https://demo-api-capital.backend-capital.com`
+   - API endpoint (live): `https://api-capital.backend-capital.com`
+5. **Configure in Trading-Pod**:
+   - Set `CAPITAL_API_KEY`, `CAPITAL_EMAIL`, `CAPITAL_PASSWORD` as Worker secrets
 
 ### API Authentication
 
-```
-nonce = current Unix timestamp in milliseconds
-signature = HMAC-SHA512(
-  urlPath + SHA256(nonce + POST_data),
-  base64Decode(API_SECRET)
-)
+1. POST `/api/v1/session` with API key, email, password → receive CST + security token
+2. Include both tokens in subsequent requests:
+   - `CST: <cst_token>`
+   - `X-SECURITY-TOKEN: <security_token>`
+3. Sessions expire — re-authenticate on 401
 
-Headers:
-  API-Key: <api_key>
-  API-Sign: <signature>
+### Key Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/v1/session` | POST | Login, get tokens |
+| `/api/v1/positions` | POST | Open position |
+| `/api/v1/positions/{dealId}` | DELETE | Close position |
+| `/api/v1/positions` | GET | List open positions |
+| `/api/v1/markets/{epic}` | GET | Market info & prices |
+
+---
+
+## OANDA (FX Specialist)
+
+### Why OANDA?
+
+- FCA-regulated (OANDA Europe Ltd)
+- FX specialist with tight spreads
+- Simple REST v20 API with bearer token auth
+- Free practice (demo) account
+- Supports FX and limited crypto CFDs
+
+### Setup Steps
+
+1. **Create account** at [oanda.com](https://www.oanda.com)
+2. **Create a demo account** first for testing
+3. **Generate API token**:
+   - My Account → API Access → Generate token
+   - Note your Account ID (shown in account list)
+4. **Configure in Trading-Pod**:
+   - Set `OANDA_API_TOKEN`, `OANDA_ACCOUNT_ID` as Worker secrets
+   - API endpoint (demo): `https://api-fxpractice.oanda.com`
+   - API endpoint (live): `https://api-fxtrade.oanda.com`
+
+### API Authentication
+
+Bearer token in Authorization header:
+```
+Authorization: Bearer <OANDA_API_TOKEN>
 ```
 
 ### Key Endpoints
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/0/public/Ticker` | GET | Current prices |
-| `/0/private/AddOrder` | POST | Place order |
-| `/0/private/CancelOrder` | POST | Cancel order |
-| `/0/private/OpenOrders` | POST | List open orders |
-| `/0/private/TradesHistory` | POST | Trade history |
-| `/0/private/Balance` | POST | Account balance |
+| `/v3/accounts/{id}/orders` | POST | Place order |
+| `/v3/accounts/{id}/trades` | GET | List open trades |
+| `/v3/accounts/{id}/trades/{id}/close` | PUT | Close trade |
+| `/v3/instruments/{instrument}/candles` | GET | Price data |
+| `/v3/accounts/{id}` | GET | Account summary |
 
-### Crypto Pair Format
+### FX Instrument Format
 
-- BTC/GBP → `XBTGBP`
-- ETH/GBP → `ETHGBP`
-- Use `/0/public/AssetPairs` to discover exact pair names
+- GBP/USD → `GBP_USD`
+- EUR/USD → `EUR_USD`
+- BTC/USD → `BTC_USD`
 
 ---
 
@@ -113,20 +149,35 @@ wrangler secret put IG_USERNAME
 wrangler secret put IG_PASSWORD
 wrangler secret put IG_API_URL  # https://demo-api.ig.com/gateway/deal
 
-# Kraken
-wrangler secret put KRAKEN_API_KEY
-wrangler secret put KRAKEN_API_SECRET
+# Capital.com
+wrangler secret put CAPITAL_API_KEY
+wrangler secret put CAPITAL_EMAIL
+wrangler secret put CAPITAL_PASSWORD
+
+# OANDA
+wrangler secret put OANDA_API_TOKEN
+wrangler secret put OANDA_ACCOUNT_ID
 
 # TradingView
 wrangler secret put TRADINGVIEW_WEBHOOK_SECRET
 ```
+
+## Broker Selection
+
+Trading-Pod supports **configurable broker selection per asset class**. From the dashboard Settings panel, you can choose which broker handles FX and which handles crypto. The selection is stored in KV and respected by `selectBrokerForAsset()`.
+
+Default broker preferences:
+- FX → Capital.com
+- Crypto → Capital.com
+
+You can override these to use IG for FX (tax-free spread betting) or OANDA for either.
 
 ## Paper Trading Mode
 
 Trading-Pod ships in **paper mode by default** (`TRADING_MODE=paper` in `wrangler.jsonc`). In this mode:
 
 - `selectBrokerForAsset()` returns `MockBrokerAdapter` regardless of asset class
-- No real orders are placed on IG or Kraken
+- No real orders are placed on any broker
 - The full FC pipeline, risk checks, capital gating, and event broadcasting still run
 - Perfect for end-to-end testing with real market signals
 
@@ -135,4 +186,4 @@ To switch to live trading:
 2. Ensure broker API secrets are configured (see above)
 3. Re-deploy the affected workers
 
-> ⚠️ **Start with demo broker accounts** (IG demo environment, Kraken with small balance) before going fully live.
+> ⚠️ **Start with demo broker accounts** (IG demo, Capital.com demo, OANDA practice) before going fully live.

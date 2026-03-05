@@ -113,8 +113,11 @@ wrangler secret put DASHBOARD_TOKEN --name trading-pod-event-stream
 npx wrangler secret put IG_API_KEY
 npx wrangler secret put IG_USERNAME
 npx wrangler secret put IG_PASSWORD
-npx wrangler secret put KRAKEN_API_KEY
-npx wrangler secret put KRAKEN_API_SECRET
+npx wrangler secret put CAPITAL_API_KEY
+npx wrangler secret put CAPITAL_EMAIL
+npx wrangler secret put CAPITAL_PASSWORD
+npx wrangler secret put OANDA_API_TOKEN
+npx wrangler secret put OANDA_ACCOUNT_ID
 ```
 
 Generate strong secrets:

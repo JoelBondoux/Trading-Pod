@@ -54,7 +54,8 @@ Trading-Pod is designed so that **no third party can access funds, execute trade
 | `DASHBOARD_TOKEN` | `wrangler secret put` | Authenticates dashboard WebSocket connections |
 | `config:webhook_secret` | Cloudflare KV | Validates TradingView webhook payloads |
 | IG API credentials | `wrangler secret put` | Never in code, KV, or git |
-| Kraken API credentials | `wrangler secret put` | Never in code, KV, or git |
+| Capital.com API credentials | `wrangler secret put` | Never in code, KV, or git |
+| OANDA API credentials | `wrangler secret put` | Never in code, KV, or git |
 
 **Rules:**
 - Secrets are NEVER stored in code, `.env` files committed to git, or KV

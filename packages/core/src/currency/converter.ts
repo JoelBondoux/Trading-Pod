@@ -1,7 +1,7 @@
 // ============================================================================
 // Currency Converter — USD→GBP for UK tax calculations
 // ============================================================================
-// Crypto prices from Kraken are in USD. UK CGT must be computed in GBP.
+// Some broker prices may be in USD. UK CGT must be computed in GBP.
 // This module provides exchange rate fetching and conversion utilities.
 // ============================================================================
 
@@ -70,15 +70,14 @@ export class CurrencyConverter {
 
   /**
    * Refresh the exchange rate from a public API.
-   * Uses the Kraken public ticker for GBP/USD as it's already a dependency.
+   * Uses the open.er-api.com free endpoint (no auth required).
    * Falls back to the configured fallback rate on error.
    */
   async refresh(): Promise<void> {
     try {
-      // Kraken public API — no auth needed
-      // GBPUSD ticker gives us USD per GBP, we need the inverse
+      // Free exchange rate API — no auth needed
       const res = await fetch(
-        "https://api.kraken.com/0/public/Ticker?pair=GBPUSD"
+        "https://open.er-api.com/v6/latest/USD"
       );
 
       if (!res.ok) {
@@ -87,28 +86,19 @@ export class CurrencyConverter {
       }
 
       const data = (await res.json()) as {
-        error: string[];
-        result?: Record<string, { c: [string, string] }>;
+        result?: string;
+        rates?: Record<string, number>;
       };
 
-      if (data.error?.length > 0) {
-        console.warn(`Kraken API error: ${data.error.join(", ")}`);
+      if (data.result !== "success" || !data.rates?.GBP) {
+        console.warn("No GBP rate in exchange rate response");
         return;
       }
-
-      // Extract last trade price for GBPUSD
-      const pair = data.result ? Object.values(data.result)[0] : undefined;
-      if (!pair?.c?.[0]) {
-        console.warn("No rate data in Kraken response");
-        return;
-      }
-
-      const gbpPerUsd = 1 / parseFloat(pair.c[0]);
 
       this.rate = {
         from: "USD",
         to: "GBP",
-        rate: gbpPerUsd,
+        rate: data.rates.GBP,
         fetchedAt: new Date().toISOString(),
       };
     } catch (err) {

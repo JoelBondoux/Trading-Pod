@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useEventStream } from "./hooks/useEventStream.js";
+import { AuthProvider, useAuth } from "./auth/AuthContext.js";
+import { LoginPage } from "./auth/LoginPage.js";
 import { AgentTiles } from "./panels/AgentTiles.js";
 import { FCPipeline } from "./panels/FCPipeline.js";
 import { TreasurerPanel } from "./panels/TreasurerPanel.js";
@@ -8,6 +10,11 @@ import { SavingsPanel } from "./panels/SavingsPanel.js";
 import { TaxPanel } from "./panels/TaxPanel.js";
 import { DecisionReplay } from "./panels/DecisionReplay.js";
 import { ControlPanel } from "./panels/ControlPanel.js";
+import { SettingsPanel } from "./panels/SettingsPanel.js";
+
+/** Google OAuth Client ID — if not set, auth is skipped (dev mode) */
+const GOOGLE_CLIENT_ID =
+  (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID ?? "";
 
 type Tab =
   | "overview"
@@ -18,7 +25,8 @@ type Tab =
   | "savings"
   | "tax"
   | "replay"
-  | "control";
+  | "control"
+  | "settings";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
@@ -30,11 +38,36 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "tax", label: "Tax" },
   { id: "replay", label: "Replay" },
   { id: "control", label: "Control" },
+  { id: "settings", label: "Settings" },
 ];
 
 export default function App() {
+  return (
+    <AuthProvider>
+      <AuthGate />
+    </AuthProvider>
+  );
+}
+
+/** Show login page when auth is required and user is not logged in */
+function AuthGate() {
+  const { user, loading } = useAuth();
+
+  // If Google OAuth is configured, require login
+  if (GOOGLE_CLIENT_ID && !user) {
+    return <LoginPage />;
+  }
+
+  // If still loading auth state, show nothing
+  if (loading) return null;
+
+  return <Dashboard />;
+}
+
+function Dashboard() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const { connected } = useEventStream();
+  const { user, signOut } = useAuth();
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -72,6 +105,29 @@ export default function App() {
           ))}
         </nav>
 
+        {/* User info + sign out */}
+        {user && (
+          <div className="p-3 border-t border-pod-border">
+            <div className="flex items-center gap-2">
+              <img
+                src={user.picture}
+                alt=""
+                className="h-6 w-6 rounded-full"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-300 truncate">{user.name}</p>
+                <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+              </div>
+            </div>
+            <button
+              onClick={signOut}
+              className="mt-2 w-full text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
+        )}
+
         <div className="p-3 border-t border-pod-border text-[10px] text-gray-600">
           Trading Pod v0.1.0
         </div>
@@ -88,6 +144,7 @@ export default function App() {
         {activeTab === "tax" && <TaxPanel />}
         {activeTab === "replay" && <DecisionReplay />}
         {activeTab === "control" && <ControlPanel />}
+        {activeTab === "settings" && <SettingsPanel />}
       </main>
     </div>
   );

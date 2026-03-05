@@ -285,20 +285,36 @@ A step-by-step guide to go from zero to a running Trading-Pod. Tick each box as 
   ```
   (You'll be prompted to type/paste each value)
 
-### Kraken (Crypto Spot)
+### Capital.com (FX & Crypto CFDs)
 
-- [ ] **Create a Kraken account** at [kraken.com](https://www.kraken.com)
-- [ ] **Complete KYC** (identity verification — required by UK regulations)
-- [ ] **Generate an API key**: Settings → Security → API
-  - ✅ Enable: "Create/Modify Orders", "Query Orders & Trades"
-  - ❌ **Do NOT enable** "Withdraw Funds" (safety measure)
+- [ ] **Create a Capital.com account** at [capital.com](https://capital.com)
+- [ ] **Open a CFD account**
+- [ ] **Generate an API key**: Settings → API → generate key
+- [ ] **Use demo mode first**: Capital.com provides a demo API environment
 - [ ] **Store secrets**:
   ```bash
   cd packages/backend/fc-worker
-  npx wrangler secret put KRAKEN_API_KEY
-  npx wrangler secret put KRAKEN_API_SECRET
+  npx wrangler secret put CAPITAL_API_KEY
+  npx wrangler secret put CAPITAL_EMAIL
+  npx wrangler secret put CAPITAL_PASSWORD
   cd ../../..
   ```
+
+### OANDA (FX Specialist)
+
+- [ ] **Create an OANDA account** at [oanda.com](https://www.oanda.com)
+- [ ] **Create a practice account** first for testing
+- [ ] **Generate an API token**: My Account → API Access → Generate token
+- [ ] **Note your Account ID** (shown in account list)
+- [ ] **Store secrets**:
+  ```bash
+  cd packages/backend/fc-worker
+  npx wrangler secret put OANDA_API_TOKEN
+  npx wrangler secret put OANDA_ACCOUNT_ID
+  cd ../../..
+  ```
+
+> 💡 You don't need all three brokers — choose the one(s) that suit you. Use the dashboard Settings panel to select which broker handles each asset class.
 
 ---
 
@@ -340,7 +356,8 @@ Once everything is deployed, confirm each piece is working:
 | TradingView Essential | ~$13/mo (only if using webhooks) |
 | Cloudflare (Workers, D1, KV, Pages) | **Free** |
 | IG account | **Free** (spreads only) |
-| Kraken account | **Free** (commission on trades) |
+| Capital.com account | **Free** (spreads only) |
+| OANDA account | **Free** (spreads only) |
 | GitHub | **Free** |
 | **Total** | **$0 – $13/mo** |
 
@@ -369,6 +386,6 @@ Once everything is deployed, confirm each piece is working:
 - [Architecture](architecture.md) — how the system fits together
 - [Safety Model](safety_model.md) — all the guardrails that protect your capital
 - [UK Tax Model](uk_tax_model.md) — how FX and crypto taxes work
-- [Broker Setup](broker_setup.md) — detailed IG and Kraken API reference
+- [Broker Setup](broker_setup.md) — detailed IG, Capital.com, and OANDA API reference
 - [Cloudflare Deployment](cloudflare_deployment.md) — advanced deployment details
 - [TradingView Setup](tradingview_setup.md) — webhook JSON format and testing

@@ -29,9 +29,13 @@
   // Secrets (set via `wrangler secret put`):
   //   INTERNAL_SERVICE_SECRET — shared auth token for service-to-service calls
   //   IG_API_KEY — IG REST API key (for FX spread betting)
-  //   IG_API_SECRET — IG REST API password
-  //   KRAKEN_API_KEY — Kraken REST API key (for crypto spot)
-  //   KRAKEN_API_SECRET — Kraken REST API private key
+  //   IG_USERNAME — IG account username
+  //   IG_PASSWORD — IG account password
+  //   CAPITAL_API_KEY — Capital.com API key
+  //   CAPITAL_EMAIL — Capital.com account email
+  //   CAPITAL_PASSWORD — Capital.com account password
+  //   OANDA_API_TOKEN — OANDA v20 API bearer token
+  //   OANDA_ACCOUNT_ID — OANDA account ID
   "vars": {
     "TRADING_MODE": "paper"
   }

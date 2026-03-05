@@ -41,10 +41,10 @@ Reserves approximately 24% of crypto spot gains for UK Capital Gains Tax. Respec
 
 ### Execution Engine
 Routes approved decisions to the correct broker based on asset class:
-- FX → IG (spread betting, REST API)
-- Crypto → Kraken (spot, REST API)
+- FX → IG (spread betting) or Capital.com / OANDA (CFDs)
+- Crypto → Capital.com or OANDA (CFDs)
 
-Supports **paper trading mode** (`TRADING_MODE=paper`, the default) which routes all orders through a `MockBrokerAdapter` that simulates fills without touching real brokers.
+Broker selection is **configurable per asset class** from the dashboard Settings panel. Supports **paper trading mode** (`TRADING_MODE=paper`, the default) which routes all orders through a `MockBrokerAdapter` that simulates fills without touching real brokers.
 
 ### Circuit Breaker
 Automatic loss-protection gate that sits between the FC and Execution Engine:
@@ -55,7 +55,7 @@ Automatic loss-protection gate that sits between the FC and Execution Engine:
 
 ### Currency Converter
 Converts USD-denominated crypto profits to GBP for accurate UK CGT calculation:
-- Fetches live GBP/USD rate from Kraken’s public ticker API
+- Fetches live GBP/USD rate from open.er-api.com (free, no auth required)
 - Rate cached with configurable refresh interval (default 60s)
 - Fallback rate (0.79) used if API is unavailable
 
@@ -105,16 +105,16 @@ Dashboard is deployed to Cloudflare Pages as a static React SPA.
 
 ## Testing
 
-- **119 unit tests** across 8 test files using Vitest
-- Coverage: credibility scoring, risk rules, tax collector, treasurer, FC pipeline, circuit breaker, currency converter, shared utilities
+- **263 unit tests** across 21 test files using Vitest
+- Coverage: credibility scoring, risk rules, tax collector, treasurer, FC pipeline, circuit breaker, currency converter, broker adapters, shared utilities
 - Run with `pnpm test` from the monorepo root
 - CI runs tests automatically on every push/PR
 
 ## Scripts
 
 | Script | Purpose |
-|--------|---------|
-| `pnpm test` | Run all 119 unit tests |
+|--------|--------|
+| `pnpm test` | Run all 263 unit tests |
 | `pnpm -r typecheck` | Typecheck all 9 packages |
 | `pnpm -r build` | Build all packages |
 | `node scripts/migrate-d1.mjs` | Apply D1 schema (supports `--local`, `--env`, `--dry-run`) |

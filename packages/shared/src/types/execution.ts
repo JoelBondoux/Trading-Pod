@@ -55,7 +55,7 @@ export interface TradeExecution {
   /** Broker-specific order ID */
   brokerOrderId?: string;
 
-  /** Broker name (ig, kraken, mock) */
+  /** Broker name (mock, ig, capital, oanda) */
   broker: string;
 
   /** Current status */

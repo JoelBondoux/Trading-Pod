@@ -11,9 +11,9 @@ Trading-Pod operates in two distinct UK tax regimes:
 - No tax reporting requirement
 - This is the primary advantage of using IG for FX
 
-### Crypto Spot Trading (Kraken) — CGT APPLIES
+### Crypto CFD Trading (Capital.com / OANDA) — CGT APPLIES
 
-- Crypto is a **chargeable asset** for Capital Gains Tax
+- Crypto CFD profits are subject to **Capital Gains Tax**
 - Current CGT rate for higher/additional rate taxpayers: **24%**
 - Annual Exempt Amount: **£3,000** (from 2024/25 onwards, reduced from £6,000)
 - UK tax year: **6 April – 5 April**
@@ -107,9 +107,9 @@ In KV store under `config:tax`:
 
 ## USD → GBP Currency Conversion
 
-Crypto spot profits from Kraken are denominated in GBP pairs (e.g., `XBTGBP`), but if you trade USD pairs, the `CurrencyConverter` class handles conversion:
+Crypto profits may be denominated in USD depending on the broker and trading pair. The `CurrencyConverter` class handles conversion:
 
-- Fetches live GBP/USD rate from Kraken’s public ticker API (`/0/public/Ticker?pair=GBPUSD`)
+- Fetches live GBP/USD rate from open.er-api.com (free, no auth required)
 - Rate is cached with a configurable refresh interval (default: 60 seconds)
 - If the API is unavailable, a fallback rate of 0.79 is used
 - Conversion is applied **before** the Tax Collector calculates the CGT reserve

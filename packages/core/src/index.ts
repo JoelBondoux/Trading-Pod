@@ -22,16 +22,21 @@ export { ExecutionEngine } from "./execution_engine/engine.js";
 export {
   MockBrokerAdapter,
   IGBrokerAdapter,
-  KrakenBrokerAdapter,
+  CapitalComBrokerAdapter,
+  OandaBrokerAdapter,
   createBrokerAdapter,
   selectBrokerForAsset,
+  DEFAULT_BROKER_PREFERENCES,
 } from "./execution_engine/broker_adapter.js";
 export type {
   BrokerAdapter,
   BrokerAdapterType,
   TradingMode,
+  BrokerPreferences,
+  BrokerAdapterMap,
   IGConfig,
-  KrakenConfig,
+  CapitalComConfig,
+  OandaConfig,
 } from "./execution_engine/broker_adapter.js";
 
 // Risk Rules

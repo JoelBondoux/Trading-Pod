@@ -75,7 +75,7 @@ Automatic trading halt when losses accumulate:
 
 - `TRADING_MODE=paper` is the **default** for all workers
 - When active, `selectBrokerForAsset()` always returns `MockBrokerAdapter`
-- No real orders are placed on IG or Kraken
+- No real orders are placed on IG, Capital.com, or OANDA
 - Allows full end-to-end system testing with real market signals
 - Switch to `TRADING_MODE=live` in `wrangler.jsonc` only when confident
 
