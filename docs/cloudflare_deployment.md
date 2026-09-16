@@ -1,192 +1,29 @@
-# Cloudflare Deployment
+# Deployment notes
 
-## Prerequisites
+**This foundation PR does not deploy anything.** The existing Cloudflare layout is retained for development, while the always-running practice executor and operational database remain to be implemented.
 
-- [Cloudflare account](https://dash.cloudflare.com/sign-up) (free tier)
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) installed
-- `pnpm` installed
+## Retained components
 
-## Architecture
+The repository has FC, Treasurer, Savings, Webhook and Event Stream workers plus a React dashboard. FC now exposes a small server-verified dashboard API. The event stream is retired until per-user sessions exist. D1/KV data is not an operational risk ledger.
 
-```
-Cloudflare Edge
-├── Workers (5 services)
-│   ├── fc-worker          — Signal processing + FC decisions
-│   ├── treasurer-worker   — Capital allocation
-│   ├── savings-worker     — Savings vault
-│   ├── webhook-worker     — TradingView webhook ingestion
-│   └── event-stream-worker — Durable Object WebSocket hub
-├── D1 Database            — All transactional data
-├── KV Namespace           — Read-heavy config
-└── Pages                  — React dashboard SPA
-```
+## Future deployment configuration
 
-## Step-by-Step Deployment
+| Location                         | Configuration                                             |
+| -------------------------------- | --------------------------------------------------------- |
+| Dashboard public build variables | VITE_GOOGLE_CLIENT_ID, VITE_API_URL                       |
+| FC public worker vars            | GOOGLE_CLIENT_ID, DASHBOARD_ORIGIN, TRADING_MODE=RESEARCH |
+| FC server-only allowlist         | DASHBOARD_ALLOWED_SUBJECTS                                |
+| Internal workers' secret stores  | INTERNAL_SERVICE_SECRET                                   |
+| Broker credentials               | None in this release                                      |
 
-### 1. Login to Cloudflare
+Use HTTPS and one exact dashboard Origin for any deployed API. Remove legacy browser secret variables. If a previous build included service secrets, rotate them and retire the old build during the authorised deployment. No secret rotation is implied by a source change.
 
-```bash
-npx wrangler login
-```
+Cloudflare configuration files still contain placeholder resource IDs. Provisioning, migrations, hostnames and paid resources need an explicit implementation/deployment task. Do not copy old live-mode instructions from repository history.
 
-### 2. Create D1 Database
+## Verification gate
 
-```bash
-npx wrangler d1 create trading-pod-db
+Run frozen install, recursive build, typecheck and tests. Exercise identity denial, missing configuration, locked controls and browser sign-in on the configured host. Verify no broker/secret material appears in public assets or logs.
 
-# Note the database_id from output, update wrangler.jsonc files
-```
+CI performs build/check/test work only. It must not provision infrastructure, deploy, arm a practice account, send orders or enable a live environment.
 
-### 3. Apply D1 Schema
-
-Use the migration script (recommended):
-```bash
-node scripts/migrate-d1.mjs
-```
-
-Or manually:
-```bash
-npx wrangler d1 execute trading-pod-db --file=packages/backend/d1-schema.sql
-```
-
-For local development: `node scripts/migrate-d1.mjs --local`
-For a dry run: `node scripts/migrate-d1.mjs --dry-run`
-
-### 4. Create KV Namespace
-
-```bash
-npx wrangler kv namespace create TRADING_POD_KV
-
-# Note the KV namespace id, update wrangler.jsonc files
-```
-
-### 5. Seed KV Config
-
-```bash
-# Upload default risk rules
-npx wrangler kv key put --namespace-id=<id> "config:risk_rules" '{
-  "minRewardRiskRatio": 1.5,
-  "maxStopLossPercent": 3.0,
-  "minStopLossPercent": 0.1,
-  "maxTradesPerDay": 5,
-  "minConfidence": 0.6,
-  "blockedRegimes": ["volatile"],
-  "newsBlockWindowMinutes": 30
-}'
-
-# Upload webhook secret
-npx wrangler kv key put --namespace-id=<id> "config:webhook_secret" '"your-secret-here"'
-```
-
-### 6. Deploy Workers
-
-> **Order matters!** Workers with service bindings must be deployed *after*
-> the workers they reference. Deploy leaf workers first, then dependents.
-
-```bash
-# 1. Leaf workers (no service bindings — deploy first, any order)
-cd packages/backend/treasurer-worker    && npx wrangler deploy && cd ../../..
-cd packages/backend/event-stream-worker && npx wrangler deploy && cd ../../..
-cd packages/backend/savings-worker      && npx wrangler deploy && cd ../../..
-
-# 2. FC worker (depends on treasurer + event-stream)
-cd packages/backend/fc-worker           && npx wrangler deploy && cd ../../..
-
-# 3. Webhook worker (depends on fc-worker) — deploy LAST
-cd packages/backend/webhook-worker      && npx wrangler deploy && cd ../../..
-```
-
-### 7. Set Worker Secrets
-
-```bash
-# Internal service secret (same value on ALL workers)
-wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-fc
-wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-treasurer
-wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-savings
-wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-event-stream
-wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-webhook
-
-# Dashboard token (event-stream worker only)
-wrangler secret put DASHBOARD_TOKEN --name trading-pod-event-stream
-
-# Broker API keys (only on fc-worker)
-npx wrangler secret put IG_API_KEY
-npx wrangler secret put IG_USERNAME
-npx wrangler secret put IG_PASSWORD
-npx wrangler secret put CAPITAL_API_KEY
-npx wrangler secret put CAPITAL_EMAIL
-npx wrangler secret put CAPITAL_PASSWORD
-npx wrangler secret put OANDA_API_TOKEN
-npx wrangler secret put OANDA_ACCOUNT_ID
-```
-
-Generate strong secrets:
-```bash
-node -e "console.log(crypto.randomUUID() + crypto.randomUUID())"
-```
-
-### 8. Deploy Dashboard to Pages
-
-```bash
-cd packages/dashboard
-pnpm build
-
-# Create Pages project
-npx wrangler pages project create trading-pod-dashboard
-
-# Deploy
-npx wrangler pages deploy dist
-```
-
-### 9. Set Dashboard Environment Variables
-
-In Cloudflare Pages dashboard, set:
-- `VITE_WS_URL` = `wss://event-stream-worker.<your-subdomain>.workers.dev/ws`
-- `VITE_FC_URL` = `https://fc-worker.<your-subdomain>.workers.dev`
-- `VITE_INTERNAL_SECRET` = same value as `INTERNAL_SERVICE_SECRET`
-- `VITE_GOOGLE_CLIENT_ID` = your Google OAuth Client ID (optional — leave blank to disable auth)
-- `VITE_ALLOWED_EMAILS` = comma-separated allowed emails (optional — leave blank to allow any Google account)
-
-## Free Tier Limits
-
-| Resource | Free Limit | Our Usage |
-|----------|-----------|-----------|
-| Workers requests | 100K/day | Well within limit |
-| D1 reads | 5M/day | Well within limit |
-| D1 writes | 100K/day | Well within limit |
-| D1 storage | 5 GB | Minimal |
-| KV reads | 100K/day | Minimal (config only) |
-| KV writes | 1K/day | Minimal (config changes) |
-| Durable Objects requests | 1M/month | Moderate |
-| Pages deployments | 500/month | Well within limit |
-
-## Service Bindings
-
-Workers communicate via Cloudflare service bindings (zero-latency, no HTTP overhead):
-
-- `webhook-worker` → `fc-worker` (forward TradingView signals)
-- `fc-worker` → `treasurer-worker` (capital requests)
-- `fc-worker` → `event-stream-worker` (broadcast events)
-
-These are configured in each worker's `wrangler.jsonc`.
-
-## Trading Mode
-
-All workers ship with `TRADING_MODE=paper` by default (set in `wrangler.jsonc` vars). In paper mode, `selectBrokerForAsset()` always returns `MockBrokerAdapter` — no real orders are placed.
-
-To switch to live trading, update the `vars` section in each worker's `wrangler.jsonc`:
-```jsonc
-"vars": {
-  "TRADING_MODE": "live"
-}
-```
-
-## Structured Logging
-
-All workers use a structured JSON logger (`createLogger` from `@trading-pod/shared`). Each log entry includes:
-- `timestamp` — ISO 8601
-- `level` — debug/info/warn/error
-- `worker` — which worker emitted the log
-- `correlationId` — for tracing requests across workers
-
-Logs are visible in the Cloudflare dashboard under Workers → Logs.
+The eventual execution daemon requires durable state and reconciliation across restarts, health monitoring and backups. A dashboard worker deployment does not satisfy that requirement.

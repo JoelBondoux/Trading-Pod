@@ -7,7 +7,7 @@
 //   GET  /state           — Get current Treasurer state [internal auth]
 // ============================================================================
 
-import { CapitalRequestSchema, CapitalReturnSchema } from "@trading-pod/shared";
+import { FxCapitalRequestSchema, FxCapitalReturnSchema } from "@trading-pod/shared";
 import { validateInternalRequest, forbidden, internalError } from "@trading-pod/shared";
 
 export interface Env {
@@ -51,66 +51,62 @@ export default {
 
 async function handleCapitalRequest(request: Request, env: Env): Promise<Response> {
   const body = await request.json();
-  const result = CapitalRequestSchema.safeParse(body);
+  const result = FxCapitalRequestSchema.safeParse(body);
 
   if (!result.success) {
-    return Response.json({ error: "Invalid request", details: result.error.message }, { status: 400 });
+    return Response.json(
+      { error: "Invalid request", details: result.error.message },
+      { status: 400 },
+    );
   }
 
-  // TODO: Implement full Treasurer capital request logic
-  // 1. Load Treasurer state from D1
-  // 2. Reset daily allocation if new day
-  // 3. Check against daily ceiling and scale factor
-  // 4. Allocate capital if approved
-  // 5. Update state in D1
-
-  // Placeholder: log to audit
-  await env.TRADE_DB.prepare(
-    "INSERT INTO audit_log (event_type, payload_json) VALUES (?, ?)"
-  )
+  // The future executor must reserve aggregate risk transactionally.
+  // This legacy worker records the attempt and grants no capital.
+  await env.TRADE_DB.prepare("INSERT INTO audit_log (event_type, payload_json) VALUES (?, ?)")
     .bind("treasurer:capital_requested", JSON.stringify(result.data))
     .run();
 
-  return Response.json({
-    approved: true,
-    allocatedAmount: result.data.amount,
-    dailyRemaining: 0,
-    timestamp: new Date().toISOString(),
-    message: "Placeholder response. Full Treasurer logic pending implementation.",
-  });
+  return Response.json(
+    {
+      approved: false,
+      allocatedAmount: 0,
+      dailyRemaining: 0,
+      timestamp: new Date().toISOString(),
+      rejectionReason: "Execution locked: durable risk reservations are not implemented.",
+    },
+    { status: 503 },
+  );
 }
 
 async function handleCapitalReturn(request: Request, env: Env): Promise<Response> {
   const body = await request.json();
-  const result = CapitalReturnSchema.safeParse(body);
+  const result = FxCapitalReturnSchema.safeParse(body);
 
   if (!result.success) {
-    return Response.json({ error: "Invalid request", details: result.error.message }, { status: 400 });
+    return Response.json(
+      { error: "Invalid request", details: result.error.message },
+      { status: 400 },
+    );
   }
 
-  // TODO: Implement full capital return logic
-  // 1. Load Treasurer state
-  // 2. Process return (split profit: 50% Treasurer, 50% Savings)
-  // 3. If crypto and profitable → route through Tax Collector first
-  // 4. Adjust scale factor
-  // 5. Update state in D1
+  // Closure and realised P&L must come from reconciled broker transactions.
+  // Record only the attempted request until that ledger exists.
 
-  await env.TRADE_DB.prepare(
-    "INSERT INTO audit_log (event_type, payload_json) VALUES (?, ?)"
-  )
-    .bind("treasurer:capital_returned", JSON.stringify(result.data))
+  await env.TRADE_DB.prepare("INSERT INTO audit_log (event_type, payload_json) VALUES (?, ?)")
+    .bind("treasurer:capital_return_attempted", JSON.stringify(result.data))
     .run();
 
-  return Response.json({
-    processed: true,
-    message: "Capital return logged. Full processing pending implementation.",
-  });
+  return Response.json(
+    {
+      processed: false,
+      message: "Capital return recorded as an attempt only. Ledger processing is not implemented.",
+    },
+    { status: 503 },
+  );
 }
 
 async function getState(env: Env): Promise<Response> {
-  const state = await env.TRADE_DB.prepare(
-    "SELECT * FROM treasurer_state WHERE id = 1"
-  ).first();
+  const state = await env.TRADE_DB.prepare("SELECT * FROM treasurer_state WHERE id = 1").first();
 
   if (!state) {
     return Response.json({

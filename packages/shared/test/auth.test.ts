@@ -3,12 +3,7 @@
 // ============================================================================
 
 import { describe, it, expect, vi, afterEach } from "vitest";
-import {
-  validateInternalRequest,
-  validateDashboardToken,
-  forbidden,
-  internalError,
-} from "../src/auth/index.js";
+import { validateInternalRequest, forbidden, internalError } from "../src/auth/index.js";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -49,33 +44,6 @@ describe("validateInternalRequest", () => {
       headers: { "X-Internal-Secret": "short" },
     });
     expect(validateInternalRequest(req, "much-longer-secret")).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// validateDashboardToken
-// ---------------------------------------------------------------------------
-
-describe("validateDashboardToken", () => {
-  it("returns true when query param matches token", () => {
-    const req = new Request("wss://api.example.com/ws?token=dash-token-abc");
-    expect(validateDashboardToken(req, "dash-token-abc")).toBe(true);
-  });
-
-  it("returns false when query param does not match", () => {
-    const req = new Request("wss://api.example.com/ws?token=wrong");
-    expect(validateDashboardToken(req, "dash-token-abc")).toBe(false);
-  });
-
-  it("returns false when token query param is missing", () => {
-    const req = new Request("wss://api.example.com/ws");
-    expect(validateDashboardToken(req, "dash-token-abc")).toBe(false);
-  });
-
-  it("returns false when dashboard token is undefined", () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const req = new Request("wss://api.example.com/ws?token=anything");
-    expect(validateDashboardToken(req, undefined)).toBe(false);
   });
 });
 

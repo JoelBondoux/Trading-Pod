@@ -2,47 +2,49 @@
 // Execution Engine — Deterministic, rule-based trade execution
 // ============================================================================
 
-import type {
-  FCDecision,
-  TradeExecution,
-  CapitalResponse,
-} from "@trading-pod/shared";
-import { generateId, now } from "@trading-pod/shared";
+import type { FCDecision, TradeExecution, CapitalResponse } from "@trading-pod/shared";
+import { generateId, now, FxSignalSchema } from "@trading-pod/shared";
 import type { BrokerAdapter } from "./broker_adapter.js";
 
 /**
- * Execution Engine.
- * Deterministic, rule-based. Places trades via broker adapters.
- * Immediately sets SL/TP. Logs slippage, spread, and execution details.
+ * Legacy offline simulator, retained for unit experiments only.
+ * Its sizing and fill assumptions must never be used for broker execution.
  */
 export class ExecutionEngine {
   private broker: BrokerAdapter;
 
   constructor(broker: BrokerAdapter) {
+    if (broker.name !== "mock") throw new Error("Legacy execution is simulation-only");
     this.broker = broker;
   }
 
   /**
    * Execute a trade based on an FC decision and capital allocation.
    */
-  async execute(
-    decision: FCDecision,
-    capitalResponse: CapitalResponse
-  ): Promise<TradeExecution> {
+  async execute(decision: FCDecision, capitalResponse: CapitalResponse): Promise<TradeExecution> {
     const executionId = generateId();
+
+    if (decision.contributingSignals.some((signal) => !FxSignalSchema.safeParse(signal).success)) {
+      return this.createFailedExecution(
+        executionId,
+        decision,
+        capitalResponse,
+        "Invalid FX signal",
+      );
+    }
 
     if (!decision.approved || !capitalResponse.approved) {
       return this.createFailedExecution(
         executionId,
         decision,
         capitalResponse,
-        "Decision or capital not approved"
+        "Decision or capital not approved",
       );
     }
 
     // Use the representative signal (first contributing signal in consensus direction)
     const signal = decision.contributingSignals.find(
-      (s) => s.direction === decision.consensus.direction
+      (s) => s.direction === decision.consensus.direction,
     );
 
     if (!signal) {
@@ -50,7 +52,7 @@ export class ExecutionEngine {
         executionId,
         decision,
         capitalResponse,
-        "No signal found matching consensus direction"
+        "No signal found matching consensus direction",
       );
     }
 
@@ -72,7 +74,7 @@ export class ExecutionEngine {
           executionId,
           decision,
           capitalResponse,
-          `Broker rejected order: ${response.rejectionReason ?? "unknown"}`
+          `Broker rejected order: ${response.rejectionReason ?? "unknown"}`,
         );
       }
 
@@ -106,7 +108,7 @@ export class ExecutionEngine {
         executionId,
         decision,
         capitalResponse,
-        `Broker error: ${error instanceof Error ? error.message : String(error)}`
+        `Broker error: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
@@ -114,10 +116,7 @@ export class ExecutionEngine {
   /**
    * Close a position and record the result.
    */
-  async closePosition(
-    execution: TradeExecution,
-    exitPrice: number
-  ): Promise<TradeExecution> {
+  async closePosition(execution: TradeExecution, exitPrice: number): Promise<TradeExecution> {
     // Calculate PnL
     const priceDiff =
       execution.direction === "long"
@@ -139,7 +138,7 @@ export class ExecutionEngine {
     executionId: string,
     decision: FCDecision,
     capitalResponse: CapitalResponse,
-    errorMessage: string
+    errorMessage: string,
   ): TradeExecution {
     const signal = decision.contributingSignals[0];
 

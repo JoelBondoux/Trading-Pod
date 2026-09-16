@@ -1,20 +1,14 @@
 import { useState } from "react";
-import { useEventStream } from "./hooks/useEventStream.js";
+import { useRuntimeStatus } from "./hooks/useRuntimeStatus.js";
 import { AuthProvider, useAuth } from "./auth/AuthContext.js";
 import { LoginPage } from "./auth/LoginPage.js";
 import { AgentTiles } from "./panels/AgentTiles.js";
 import { FCPipeline } from "./panels/FCPipeline.js";
 import { TreasurerPanel } from "./panels/TreasurerPanel.js";
 import { ExecutionPanel } from "./panels/ExecutionPanel.js";
-import { SavingsPanel } from "./panels/SavingsPanel.js";
-import { TaxPanel } from "./panels/TaxPanel.js";
 import { DecisionReplay } from "./panels/DecisionReplay.js";
 import { ControlPanel } from "./panels/ControlPanel.js";
 import { SettingsPanel } from "./panels/SettingsPanel.js";
-
-/** Google OAuth Client ID — if not set, auth is skipped (dev mode) */
-const GOOGLE_CLIENT_ID =
-  (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID ?? "";
 
 type Tab =
   | "overview"
@@ -22,8 +16,6 @@ type Tab =
   | "fc"
   | "treasurer"
   | "execution"
-  | "savings"
-  | "tax"
   | "replay"
   | "control"
   | "settings";
@@ -34,8 +26,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "fc", label: "FC Pipeline" },
   { id: "treasurer", label: "Treasurer" },
   { id: "execution", label: "Execution" },
-  { id: "savings", label: "Savings" },
-  { id: "tax", label: "Tax" },
   { id: "replay", label: "Replay" },
   { id: "control", label: "Control" },
   { id: "settings", label: "Settings" },
@@ -53,8 +43,8 @@ export default function App() {
 function AuthGate() {
   const { user, loading } = useAuth();
 
-  // If Google OAuth is configured, require login
-  if (GOOGLE_CLIENT_ID && !user) {
+  // Missing auth configuration never opens the dashboard.
+  if (!user) {
     return <LoginPage />;
   }
 
@@ -66,7 +56,7 @@ function AuthGate() {
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
-  const { connected } = useEventStream();
+  const { connected } = useRuntimeStatus();
   const { user, signOut } = useAuth();
 
   return (
@@ -74,17 +64,11 @@ function Dashboard() {
       {/* Sidebar */}
       <aside className="w-56 flex-shrink-0 bg-pod-surface border-r border-pod-border flex flex-col">
         <div className="p-4 border-b border-pod-border">
-          <h1 className="text-lg font-bold text-white tracking-tight">
-            🤖 Trading Pod
-          </h1>
+          <h1 className="text-lg font-bold text-white tracking-tight">🤖 Trading Pod</h1>
           <div className="flex items-center gap-2 mt-2 text-xs">
-            <span
-              className={`h-2 w-2 rounded-full ${
-                connected ? "bg-pod-green" : "bg-pod-red"
-              }`}
-            />
+            <span className={`h-2 w-2 rounded-full ${connected ? "bg-pod-green" : "bg-pod-red"}`} />
             <span className="text-gray-400">
-              {connected ? "Connected" : "Disconnected"}
+              {connected ? "Status connected" : "Status unavailable"}
             </span>
           </div>
         </div>
@@ -109,11 +93,7 @@ function Dashboard() {
         {user && (
           <div className="p-3 border-t border-pod-border">
             <div className="flex items-center gap-2">
-              <img
-                src={user.picture}
-                alt=""
-                className="h-6 w-6 rounded-full"
-              />
+              <img src={user.picture} alt="" className="h-6 w-6 rounded-full" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-gray-300 truncate">{user.name}</p>
                 <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
@@ -135,13 +115,14 @@ function Dashboard() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
+        <div className="mb-5 rounded-md border border-pod-accent/30 bg-pod-accent/10 p-3 text-sm text-gray-300">
+          FX research · OANDA practice · Execution locked · Broker not connected
+        </div>
         {activeTab === "overview" && <OverviewPage />}
         {activeTab === "agents" && <AgentTiles />}
         {activeTab === "fc" && <FCPipeline />}
         {activeTab === "treasurer" && <TreasurerPanel />}
         {activeTab === "execution" && <ExecutionPanel />}
-        {activeTab === "savings" && <SavingsPanel />}
-        {activeTab === "tax" && <TaxPanel />}
         {activeTab === "replay" && <DecisionReplay />}
         {activeTab === "control" && <ControlPanel />}
         {activeTab === "settings" && <SettingsPanel />}
@@ -159,8 +140,6 @@ function OverviewPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <AgentTiles compact />
         <TreasurerPanel compact />
-        <SavingsPanel compact />
-        <TaxPanel compact />
         <ExecutionPanel compact />
       </div>
 

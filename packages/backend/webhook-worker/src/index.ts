@@ -18,7 +18,7 @@
 // - No retry on failure
 // ============================================================================
 
-import { TradingViewWebhookSchema } from "@trading-pod/shared";
+import { FxWebhookSchema } from "@trading-pod/shared";
 import { internalError } from "@trading-pod/shared";
 
 export interface Env {
@@ -28,12 +28,7 @@ export interface Env {
 }
 
 /** TradingView's known source IPs for webhook requests */
-const TRADINGVIEW_IPS = new Set([
-  "52.89.214.238",
-  "34.212.75.30",
-  "54.218.53.128",
-  "52.32.178.7",
-]);
+const TRADINGVIEW_IPS = new Set(["52.89.214.238", "34.212.75.30", "54.218.53.128", "52.32.178.7"]);
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -55,14 +50,11 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
-async function handleTradingViewWebhook(
-  request: Request,
-  env: Env
-): Promise<Response> {
+async function handleTradingViewWebhook(request: Request, env: Env): Promise<Response> {
   // 1. Validate source IP — block by default unless allowlist is disabled in KV
   const sourceIp = request.headers.get("CF-Connecting-IP");
   const enforceIpAllowlist = (await env.CONFIG_KV.get("config:enforce_ip_allowlist")) !== "false";
-  if (enforceIpAllowlist && sourceIp && !TRADINGVIEW_IPS.has(sourceIp)) {
+  if (enforceIpAllowlist && (!sourceIp || !TRADINGVIEW_IPS.has(sourceIp))) {
     console.warn(`Blocked webhook from non-TradingView IP: ${sourceIp}`);
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -75,11 +67,11 @@ async function handleTradingViewWebhook(
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const result = TradingViewWebhookSchema.safeParse(body);
+  const result = FxWebhookSchema.safeParse(body);
   if (!result.success) {
     return Response.json(
       { error: "Invalid webhook payload", details: result.error.message },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -118,7 +110,7 @@ async function handleTradingViewWebhook(
           "X-Internal-Secret": env.INTERNAL_SERVICE_SECRET,
         },
         body: JSON.stringify(agentSignal),
-      })
+      }),
     );
 
     const fcResult = (await fcResponse.json()) as Record<string, unknown>;

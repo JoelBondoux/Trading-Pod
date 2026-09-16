@@ -1,5 +1,7 @@
 # UK Tax Model
 
+> Archived prototype assumptions, not current tax guidance or a statement of this project's compliance. The FX/OANDA practice rebuild does not use the tax collector or any live-money tax model. The statements below have not been revalidated and must not be used to decide tax treatment. See [development status](development_status.md).
+
 ## Applicable Tax Rules
 
 Trading-Pod operates in two distinct UK tax regimes:
@@ -91,6 +93,7 @@ The system automatically detects the current UK tax year:
 ## Configuration
 
 In KV store under `config:tax`:
+
 ```json
 {
   "reserveRate": 0.24,
@@ -99,11 +102,11 @@ In KV store under `config:tax`:
 }
 ```
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `reserveRate` | number | 0.24 | CGT reserve rate (24% for higher-rate taxpayers) |
-| `annualExemptAmount` | number | 3000 | Annual exempt amount in GBP |
-| `useAnnualExempt` | boolean | true | Whether to apply the cumulative threshold before taxing |
+| Field                | Type    | Default | Description                                             |
+| -------------------- | ------- | ------- | ------------------------------------------------------- |
+| `reserveRate`        | number  | 0.24    | CGT reserve rate (24% for higher-rate taxpayers)        |
+| `annualExemptAmount` | number  | 3000    | Annual exempt amount in GBP                             |
+| `useAnnualExempt`    | boolean | true    | Whether to apply the cumulative threshold before taxing |
 
 ## USD → GBP Currency Conversion
 

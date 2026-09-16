@@ -3,7 +3,7 @@
 // ============================================================================
 
 import type { BrokerOrder, BrokerOrderResponse } from "@trading-pod/shared";
-import { generateId, now } from "@trading-pod/shared";
+import { generateId, now, FxInstrumentSchema, OANDA_PRACTICE_ENDPOINTS } from "@trading-pod/shared";
 
 /**
  * Broker adapter interface.
@@ -36,9 +36,10 @@ export interface BrokerAdapter {
 export class MockBrokerAdapter implements BrokerAdapter {
   readonly name = "mock";
   readonly displayName = "Mock (Paper Trading)";
-  readonly supportedAssets = ["fx", "crypto"] as const;
+  readonly supportedAssets = ["fx"] as const;
 
   async placeOrder(order: BrokerOrder): Promise<BrokerOrderResponse> {
+    FxInstrumentSchema.parse(order.instrument);
     // Simulate a fill with slight slippage
     const slippageBps = (Math.random() - 0.5) * 2; // ±1 basis point
     const filledPrice =
@@ -98,12 +99,9 @@ export class CapitalComBrokerAdapter implements BrokerAdapter {
   readonly displayName = "Capital.com";
   readonly supportedAssets = ["fx", "crypto"] as const;
 
-  constructor(
-    private readonly config: CapitalComConfig,
-    private readonly baseUrl = config.demo
-      ? "https://demo-api-capital.backend-capital.com"
-      : "https://api-capital.backend-capital.com",
-  ) {}
+  constructor(private readonly config: CapitalComConfig) {
+    if (config.demo !== true) throw new Error("Live execution is locked");
+  }
 
   async placeOrder(_order: BrokerOrder): Promise<BrokerOrderResponse> {
     // TODO: Implement Capital.com API integration
@@ -114,7 +112,7 @@ export class CapitalComBrokerAdapter implements BrokerAdapter {
   }
 
   async cancelOrder(_orderId: string): Promise<boolean> {
-    throw new Error(`Capital.com adapter (${this.baseUrl}) not yet implemented.`);
+    throw new Error("Capital.com adapter is out of scope and not yet implemented.");
   }
 
   async healthCheck(): Promise<boolean> {
@@ -125,7 +123,7 @@ export class CapitalComBrokerAdapter implements BrokerAdapter {
 }
 
 // ============================================================================
-// OANDA Broker Adapter — FX & Crypto CFDs (Stub)
+// OANDA Broker Adapter — FX practice only (locked stub)
 // ============================================================================
 
 export interface OandaConfig {
@@ -133,12 +131,12 @@ export interface OandaConfig {
   apiToken: string;
   /** OANDA account ID (e.g., "101-004-12345678-001") */
   accountId: string;
-  /** true = practice (demo), false = live */
+  /** Must be true. Live accounts are not supported. */
   demo: boolean;
 }
 
 /**
- * OANDA broker adapter for FX and crypto trading.
+ * OANDA practice broker stub. It cannot submit orders in this milestone.
  * Uses OANDA v20 REST API.
  *
  * Docs: https://developer.oanda.com/rest-live-v20/introduction/
@@ -153,15 +151,13 @@ export interface OandaConfig {
  */
 export class OandaBrokerAdapter implements BrokerAdapter {
   readonly name = "oanda";
-  readonly displayName = "OANDA";
-  readonly supportedAssets = ["fx", "crypto"] as const;
+  readonly displayName = "OANDA Practice (locked)";
+  readonly supportedAssets = ["fx"] as const;
+  readonly baseUrl = OANDA_PRACTICE_ENDPOINTS.rest;
 
-  constructor(
-    private readonly config: OandaConfig,
-    private readonly baseUrl = config.demo
-      ? "https://api-fxpractice.oanda.com"
-      : "https://api-fxtrade.oanda.com",
-  ) {}
+  constructor(private readonly config: OandaConfig) {
+    if (config.demo !== true) throw new Error("Live execution is locked");
+  }
 
   async placeOrder(_order: BrokerOrder): Promise<BrokerOrderResponse> {
     // TODO: Implement OANDA v20 API integration
@@ -211,12 +207,9 @@ export class IGBrokerAdapter implements BrokerAdapter {
   readonly displayName = "IG";
   readonly supportedAssets = ["fx"] as const;
 
-  constructor(
-    private readonly config: IGConfig,
-    private readonly baseUrl = config.demo
-      ? "https://demo-api.ig.com/gateway/deal"
-      : "https://api.ig.com/gateway/deal",
-  ) {}
+  constructor(private readonly config: IGConfig) {
+    if (config.demo !== true) throw new Error("Live execution is locked");
+  }
 
   async placeOrder(_order: BrokerOrder): Promise<BrokerOrderResponse> {
     // TODO: Implement IG API integration
@@ -227,7 +220,7 @@ export class IGBrokerAdapter implements BrokerAdapter {
   }
 
   async cancelOrder(_orderId: string): Promise<boolean> {
-    throw new Error(`IG broker adapter (${this.baseUrl}) not yet implemented.`);
+    throw new Error("IG adapter is out of scope and not yet implemented.");
   }
 
   async healthCheck(): Promise<boolean> {
@@ -245,17 +238,14 @@ export type BrokerAdapterType = "mock" | "ig" | "capital" | "oanda";
 
 export function createBrokerAdapter(
   type: BrokerAdapterType,
-  config?: IGConfig | CapitalComConfig | OandaConfig
+  config?: IGConfig | CapitalComConfig | OandaConfig,
 ): BrokerAdapter {
   switch (type) {
     case "mock":
       return new MockBrokerAdapter();
     case "ig":
-      if (!config) throw new Error("IG config required");
-      return new IGBrokerAdapter(config as IGConfig);
     case "capital":
-      if (!config) throw new Error("Capital.com config required");
-      return new CapitalComBrokerAdapter(config as CapitalComConfig);
+      throw new Error("Only OANDA practice is in scope");
     case "oanda":
       if (!config) throw new Error("OANDA config required");
       return new OandaBrokerAdapter(config as OandaConfig);
@@ -264,12 +254,12 @@ export function createBrokerAdapter(
   }
 }
 
-/** Trading mode — paper always forces MockBrokerAdapter */
+/** Legacy simulation API. Every non-paper mode is rejected. */
 export type TradingMode = "paper" | "live";
 
 /**
  * Broker preferences per asset class.
- * Stored in KV and editable from the dashboard.
+ * Retained for offline compatibility only; the dashboard cannot change brokers.
  */
 export interface BrokerPreferences {
   fx: BrokerAdapterType;
@@ -277,8 +267,8 @@ export interface BrokerPreferences {
 }
 
 export const DEFAULT_BROKER_PREFERENCES: BrokerPreferences = {
-  fx: "capital",
-  crypto: "capital",
+  fx: "oanda",
+  crypto: "mock",
 };
 
 /**
@@ -289,25 +279,18 @@ export type BrokerAdapterMap = Partial<Record<BrokerAdapterType, BrokerAdapter>>
 };
 
 /**
- * Select the appropriate broker adapter based on asset class and user preferences.
- * In paper mode, always returns the mock adapter regardless of preferences.
- * In live mode, uses the user's chosen broker for each asset class.
+ * Legacy simulation selector. Never silently substitute a mock for a broker.
+ * Practice execution will use a separate reconciled lifecycle, not this simulator.
  */
 export function selectBrokerForAsset(
   assetClass: "fx" | "crypto",
   adapters: BrokerAdapterMap,
   mode: TradingMode = "paper",
-  preferences: BrokerPreferences = DEFAULT_BROKER_PREFERENCES,
+  _preferences: BrokerPreferences = DEFAULT_BROKER_PREFERENCES,
 ): BrokerAdapter {
-  if (mode === "paper") {
-    return adapters.mock;
-  }
-
-  const preferred = preferences[assetClass];
-  const adapter = adapters[preferred];
-  if (adapter) return adapter;
-
-  // Fallback to mock if preferred broker not configured
-  console.warn(`Broker '${preferred}' not configured for ${assetClass}, falling back to mock`);
+  if (assetClass !== "fx") throw new Error("Only FX is in scope");
+  if (mode !== "paper") throw new Error("Broker execution is locked");
+  if (!(adapters.mock instanceof MockBrokerAdapter))
+    throw new Error("An offline mock adapter is required");
   return adapters.mock;
 }

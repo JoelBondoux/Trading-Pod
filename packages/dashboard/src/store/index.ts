@@ -8,6 +8,7 @@ import type {
   SavingsState,
   TaxReserveState,
   SystemEvent,
+  RuntimeStatus,
 } from "@trading-pod/shared";
 
 // ---------------------------------------------------------------------------
@@ -47,8 +48,7 @@ export interface ConnectionSlice {
 }
 
 export interface ControlSlice {
-  frozenAgents: Set<string>;
-  tradingPaused: boolean;
+  runtimeStatus: RuntimeStatus | null;
 }
 
 export interface PodStore
@@ -70,8 +70,7 @@ export interface PodStore
   setTaxState: (t: TaxReserveState) => void;
   setConnected: (v: boolean) => void;
   pushEvent: (e: SystemEvent) => void;
-  toggleFreezeAgent: (agentId: string) => void;
-  toggleTradingPaused: () => void;
+  setRuntimeStatus: (status: RuntimeStatus | null) => void;
   handleEvent: (e: SystemEvent) => void;
 }
 
@@ -83,12 +82,6 @@ const MAX_SIGNALS = 200;
 const MAX_DECISIONS = 200;
 const MAX_CLOSED_TRADES = 200;
 const MAX_EVENT_LOG = 500;
-
-/** FC worker URL for server-side control commands */
-const FC_URL =
-  (import.meta as any).env?.VITE_FC_URL ?? "http://localhost:8788";
-const INTERNAL_SECRET =
-  (import.meta as any).env?.VITE_INTERNAL_SECRET ?? "";
 
 export const usePodStore = create<PodStore>((set, get) => ({
   // --- Initial state ---
@@ -103,8 +96,7 @@ export const usePodStore = create<PodStore>((set, get) => ({
   closedTrades: [],
   connected: false,
   eventLog: [],
-  frozenAgents: new Set(),
-  tradingPaused: false,
+  runtimeStatus: null,
 
   // --- Actions ---
   addSignal: (s) =>
@@ -129,20 +121,14 @@ export const usePodStore = create<PodStore>((set, get) => ({
     set((prev) => {
       if (t.status === "closed" || t.status === "cancelled" || t.status === "error") {
         return {
-          openTrades: prev.openTrades.filter(
-            (o) => o.executionId !== t.executionId,
-          ),
+          openTrades: prev.openTrades.filter((o) => o.executionId !== t.executionId),
           closedTrades: [t, ...prev.closedTrades].slice(0, MAX_CLOSED_TRADES),
         };
       }
-      const exists = prev.openTrades.find(
-        (o) => o.executionId === t.executionId,
-      );
+      const exists = prev.openTrades.find((o) => o.executionId === t.executionId);
       if (exists) {
         return {
-          openTrades: prev.openTrades.map((o) =>
-            o.executionId === t.executionId ? t : o,
-          ),
+          openTrades: prev.openTrades.map((o) => (o.executionId === t.executionId ? t : o)),
         };
       }
       return { openTrades: [t, ...prev.openTrades] };
@@ -159,39 +145,7 @@ export const usePodStore = create<PodStore>((set, get) => ({
       eventLog: [e, ...prev.eventLog].slice(0, MAX_EVENT_LOG),
     })),
 
-  toggleFreezeAgent: (agentId) => {
-    const prev = get();
-    const next = new Set(prev.frozenAgents);
-    const frozen = !next.has(agentId);
-    if (frozen) next.add(agentId);
-    else next.delete(agentId);
-    set({ frozenAgents: next });
-
-    // Fire-and-forget server-side update
-    fetch(`${FC_URL}/state/freeze`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Internal-Secret": INTERNAL_SECRET,
-      },
-      body: JSON.stringify({ agentId, frozen }),
-    }).catch((err) => console.error("Failed to sync freeze state:", err));
-  },
-
-  toggleTradingPaused: () => {
-    const paused = !get().tradingPaused;
-    set({ tradingPaused: paused });
-
-    // Fire-and-forget server-side update
-    fetch(`${FC_URL}/state/paused`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Internal-Secret": INTERNAL_SECRET,
-      },
-      body: JSON.stringify({ paused }),
-    }).catch((err) => console.error("Failed to sync pause state:", err));
-  },
+  setRuntimeStatus: (status) => set({ runtimeStatus: status, connected: status !== null }),
 
   // --- Unified event handler ---
   handleEvent: (e) => {
@@ -219,5 +173,3 @@ export const usePodStore = create<PodStore>((set, get) => ({
     }
   },
 }));
-
-

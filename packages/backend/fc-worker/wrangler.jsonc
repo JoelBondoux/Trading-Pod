@@ -7,36 +7,32 @@
     {
       "binding": "TRADE_DB",
       "database_name": "trading-pod-db",
-      "database_id": "REPLACE_WITH_ACTUAL_DB_ID"
-    }
+      "database_id": "REPLACE_WITH_ACTUAL_DB_ID",
+    },
   ],
   "kv_namespaces": [
     {
       "binding": "CONFIG_KV",
-      "id": "REPLACE_WITH_ACTUAL_KV_ID"
-    }
+      "id": "REPLACE_WITH_ACTUAL_KV_ID",
+    },
   ],
   "services": [
     {
       "binding": "TREASURER_SERVICE",
-      "service": "trading-pod-treasurer"
+      "service": "trading-pod-treasurer",
     },
     {
       "binding": "EVENT_STREAM_SERVICE",
-      "service": "trading-pod-event-stream"
-    }
+      "service": "trading-pod-event-stream",
+    },
   ],
   // Secrets (set via `wrangler secret put`):
   //   INTERNAL_SERVICE_SECRET — shared auth token for service-to-service calls
-  //   IG_API_KEY — IG REST API key (for FX spread betting)
-  //   IG_USERNAME — IG account username
-  //   IG_PASSWORD — IG account password
-  //   CAPITAL_API_KEY — Capital.com API key
-  //   CAPITAL_EMAIL — Capital.com account email
-  //   CAPITAL_PASSWORD — Capital.com account password
-  //   OANDA_API_TOKEN — OANDA v20 API bearer token
-  //   OANDA_ACCOUNT_ID — OANDA account ID
+  //   DASHBOARD_ALLOWED_SUBJECTS — comma-separated, verified Google subject IDs
+  // No broker credentials are needed or consumed in this milestone.
   "vars": {
-    "TRADING_MODE": "paper"
-  }
+    "TRADING_MODE": "RESEARCH",
+    "GOOGLE_CLIENT_ID": "",
+    "DASHBOARD_ORIGIN": "http://localhost:3000",
+  },
 }
