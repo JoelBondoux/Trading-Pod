@@ -1,6 +1,6 @@
 # Safety model
 
-This foundation is **incapable of autonomous broker execution**. All modes report PAUSED, executionEnabled=false and brokerConnected=false. A mode name is not permission to trade.
+This build is **incapable of autonomous broker execution**. All dashboard runtime modes report PAUSED, executionEnabled=false and brokerConnected=false. A separate read-only practice collector can observe an account when configured, but does not update those flags. A mode name is not permission to trade.
 
 ## Enforced now
 
@@ -16,6 +16,10 @@ This foundation is **incapable of autonomous broker execution**. All modes repor
 | OANDA live/custom host               | Fixed practice constant; literal demo=true required; no endpoint override  |
 | Browser trading controls             | Read-only identity/status API, no service secrets, controls unavailable    |
 | Forged dashboard identity            | Server signature/claim/subject verification                                |
+| Collector order submission           | Fixed practice GET-only client; no order API or execution-interface wiring |
+| Invalid or stale quote               | Structural rejection or unusable observation; never a trade instruction |
+| Lost/duplicated transaction catch-up  | Account-bound range checkpoints committed with their data; bounded replay |
+| Concurrent collector / corrupt archive | Exclusive lock; chain validation fails closed; no automatic stale-lock removal |
 
 The inherited execution engine is only an offline simulator. It still has simplified sizing, fill and close assumptions and cannot be treated as a backtest or broker lifecycle. Its adapter constructor rejects non-mock names, its router requires a real mock instance, and FX signals are validated. Code with arbitrary process access is not sandboxed by these API checks; researchers will need a separate restricted runtime.
 

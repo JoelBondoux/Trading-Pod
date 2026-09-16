@@ -33,3 +33,6 @@ pnpm-debug.log*
 
 # Testing
 coverage/
+
+# Private OANDA observations (prefer a directory outside the checkout)
+observations/

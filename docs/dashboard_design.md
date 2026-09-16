@@ -14,6 +14,8 @@ Authenticated status is polled every 30 seconds through /dashboard/status. The U
 
 A persistent banner states FX research, OANDA practice, execution locked and broker not connected. The Controls panel has no resume or agent-freeze action. Settings displays the server's mode, allowlisted pairs and Saturday 09:00 Europe/London review cadence. It does not write broker settings.
 
+The standalone read-only OANDA collector is not yet wired into this UI. Running it does not change the banner or imply account-derived dashboard metrics.
+
 Agent, FC, Treasurer, Execution and Replay panels are retained shells without an active event feed. Empty panels mean no connected data, not zero measured P&L. Tax and Savings are removed from navigation; their prototype components remain in the source tree for historical reference.
 
 ## Next work

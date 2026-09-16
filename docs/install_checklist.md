@@ -1,10 +1,10 @@
 # Local development checklist
 
-This installs and tests the foundation. It does not connect a broker, deploy services or start trading.
+This installs and tests the foundation. Broker observation needs the separate private setup below; these commands do not deploy services or start trading.
 
 ## 1. Toolchain and checks
 
-Use Node 20+ and pnpm 9.15.4, pinned by packageManager.
+Use Node 20.19+ and pnpm 9.15.4, pinned by packageManager.
 
 ```bash
 corepack pnpm install --frozen-lockfile
@@ -54,6 +54,9 @@ Do not run the root migration/upgrade deployment helpers as an installation step
 | Non-FX signal                    | 400                                             |
 | Capital request                  | 503, approved=false                             |
 | Legacy /ws                       | 410                                             |
-| OANDA connection                 | Unavailable in this milestone                   |
+| OANDA collector without config   | CONFIG_INVALID; no broker request               |
+| OANDA collector with private config | Read-only observations; execution stays locked |
 
-The OANDA v20 practice connection, transactional ledger and order lifecycle are the next milestones, not further setup switches.
+## 5. Optional read-only OANDA commissioning
+
+Follow the [observer runbook](oanda_observer.md) to configure the standalone Node collector with a practice account ID, actual currency, token and private archive directory. Begin with one `--once` collection and inspect quote quality/existing exposure before running `--watch`. Actual account access and hosted restart verification have not been performed by this PR. The transactional execution ledger and order lifecycle remain future milestones.

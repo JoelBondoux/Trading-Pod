@@ -17,7 +17,20 @@ Implemented:
 
 This is a reviewable foundation, not a completed P1 deployment or an autonomous trader. Server sessions/roles, authoritative mutable controls, deployment hardening and full configured browser integration are still outstanding. Runtime broker writes remain absent.
 
-Local verification: frozen dependency install, recursive build and typecheck pass; **324 tests across 24 files pass**. The FC worker also bundles successfully with Wrangler's local `deploy --dry-run` (no deployment). A source/build scan finds no retired browser service-secret variables or OANDA live REST host. Browser/in-account integration limitations are listed below.
+Local verification now includes the collector slice below: frozen dependency install, recursive build and typecheck; **414 tests across 28 files pass**, including 90 collector tests. The foundation's FC worker also bundled successfully with Wrangler's local `deploy --dry-run` (no deployment). Browser/in-account integration limitations are listed below.
+
+## P2 first slice — read-only OANDA observations
+
+Implemented in a separate `@trading-pod/oanda-readonly` Node package:
+
+- Fixed practice-host GET requests for full account snapshots, eligible FX metadata, prices/home conversions and bounded transaction ranges. Redirects and custom URLs are refused; HTTP bodies and exceptions cannot leak into diagnostic output.
+- Expected account/currency validation, canonical FX selection, exact decimal strings/large IDs, and quality flags for stale, future, halted, illiquid, crossed or unconvertible quotes. Existing outside-universe and hedged exposure remains visible.
+- A private local observation archive that atomically commits transaction data and checkpoints, replays committed history on restart, enforces exclusive writers and detects malformed/mismatched history. Hard-crash locks require operator verification; it never guesses that a lock is stale.
+- Explicit first-observation baselines, unfiltered subsequent transactions, bounded catch-up and no checkpoint jumps to a newer response cursor. Storage limits stop collection before unbounded growth.
+- A one-shot/watch CLI with private environment configuration, bounded retries and a [setup/recovery runbook](oanda_observer.md). It does not update dashboard broker status or implement any trading operation.
+- CI setup correction: pnpm/action-setup now uses the existing exact packageManager pin, resolving the conflicting workflow version that stopped the first remote run before installation.
+
+This does not complete P2: actual account commissioning, hosted outage/restart soak, streaming, PostgreSQL operational storage and transaction-to-account economic reconciliation remain outstanding. The local archive deliberately has no execution authority. Saturday 09:00 Europe/London reporting remains the schedule contract; a trade-report service is not implemented yet.
 
 ## Next milestones and acceptance gates
 

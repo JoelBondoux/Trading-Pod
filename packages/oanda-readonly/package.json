@@ -1,0 +1,24 @@
+{
+  "name": "@trading-pod/oanda-readonly",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "build": "tsc && esbuild src/cli.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/cli.mjs",
+    "typecheck": "tsc --noEmit",
+    "collect": "node dist/cli.mjs --once",
+    "watch": "node dist/cli.mjs --watch"
+  },
+  "dependencies": {
+    "@trading-pod/shared": "workspace:*",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "0.27.3",
+    "typescript": "^5.5.0"
+  }
+}

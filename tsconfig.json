@@ -4,6 +4,7 @@
     { "path": "packages/shared" },
     { "path": "packages/agents" },
     { "path": "packages/core" },
+    { "path": "packages/oanda-readonly" },
     { "path": "packages/dashboard" },
     { "path": "packages/backend/fc-worker" },
     { "path": "packages/backend/treasurer-worker" },

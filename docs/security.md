@@ -37,7 +37,9 @@ Reference: [Google's verification requirements](https://developers.google.com/id
 
 ## Secrets and migration
 
-Only public client ID and API location belong in dashboard build configuration. Keep service secrets in worker secrets or ignored local .dev.vars. Do not create broker secrets until the read-only practice service is implemented.
+Only public client ID and API location belong in dashboard build configuration. Keep service secrets in worker secrets or ignored local .dev.vars. Broker credentials belong solely in the standalone read-only collector's private environment/secret store; its [runbook](oanda_observer.md) lists the required configuration. Never reuse them in worker or Vite settings.
+
+The collector makes fixed-host practice GETs with redirects refused and has no order API, URL override or browser-facing server. It validates expected account identity/currency and uses bounded responses/timeouts. Errors exclude upstream bodies, credentials and raw exception causes. Its private archive stores account details with mode 0700 directories/0600 files, exclusive locking, hash-linked records and atomic commits. Hashes are corruption checks, not protection against an attacker with filesystem/process access. Use a separate trusted host/process, encrypted durable storage and backups before commissioning; enforce practice-only egress at deployment too. No host has been provisioned by this work.
 
 If an old dashboard was deployed with shared service or WebSocket credentials, treat those values as exposed: rotate the service secret across affected workers and remove the old browser build/token configuration during a separately authorised deployment. Deleting the source alone does not revoke a previously exposed secret. No secrets were rotated or deployment changed by this PR.
 
