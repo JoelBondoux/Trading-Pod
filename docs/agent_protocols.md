@@ -1,5 +1,7 @@
 # Agent Protocols
 
+> Retained offline research contracts. These historical types include crypto for old data/tests; active runtime ingress uses `FxSignalSchema` and the three-pair FX allowlist. No agent output can place orders in the foundation. See [development status](development_status.md).
+
 ## Signal Agent Interface
 
 Every signal agent implements the `SignalAgent` interface:
@@ -12,7 +14,9 @@ interface SignalAgent {
 ```
 
 ### `getMeta()`
+
 Returns static metadata about the agent:
+
 - `agentId` — unique identifier (e.g., `"trend_agent"`)
 - `name` — human-readable name
 - `description` — what the agent does
@@ -21,14 +25,15 @@ Returns static metadata about the agent:
 - `enabled` — whether the agent is active
 
 ### `analyze(data)`
+
 Accepts a `MarketDataSnapshot` containing OHLCV data and price history. Returns an `AgentSignal` if a trade opportunity is detected, or `null` if no signal.
 
 ## MarketDataSnapshot
 
 ```typescript
 interface MarketDataSnapshot {
-  instrument: string;        // e.g., "GBP/USD"
-  assetClass: AssetClass;    // "fx" | "crypto"
+  instrument: string; // e.g., "GBP/USD"
+  assetClass: AssetClass; // "fx" | "crypto"
   ohlcv: {
     open: number;
     high: number;
@@ -36,14 +41,15 @@ interface MarketDataSnapshot {
     close: number;
     volume: number;
   };
-  priceHistory: number[];    // recent close prices (oldest first)
-  timeframeMinutes: number;  // candle timeframe
+  priceHistory: number[]; // recent close prices (oldest first)
+  timeframeMinutes: number; // candle timeframe
 }
 ```
 
 ## AgentSignal
 
 All signals carry:
+
 - `signalId` — unique UUID
 - `agentId` — which agent produced it
 - `source` — `"internal"` or `"tradingview"`

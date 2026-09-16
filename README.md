@@ -1,224 +1,81 @@
-# 🤖 Trading-Pod
+# Trading Pod
 
-> Fully automated, low-risk, multi-agent trading system with independent signal agents, deterministic Financial Controller, capital-gated Treasurer, and real-time dashboard.
-> UK-compliant: FX via IG spread betting (tax-free) + Crypto via Capital.com / OANDA CFDs (CGT applies). Configurable broker selection per asset class. Google OAuth dashboard login.
+An FX research experiment being rebuilt around OANDA v20 practice accounts. The first development milestone establishes a locked execution boundary and server-verified dashboard access.
 
----
+**Current status: execution paused; broker not connected.** This build cannot start practice trading or live trading. It retains the original deterministic agents and offline simulation code for evaluation; their results are not evidence of a trading edge.
 
-## Architecture
+## Implemented in the foundation
+
+- Explicit deployment modes: `RESEARCH`, `SHADOW`, `OANDA_PRACTICE`, `LIVE_LOCKED`. All remain paused in this milestone. Unknown values, including the old `paper` and `live` values, fail closed.
+- FX ingress allowlist: EUR/USD, GBP/USD, USD/JPY, normalised to OANDA instrument names.
+- No live OANDA endpoint or custom broker endpoint setting. Legacy broker selection cannot route to a real adapter.
+- Google ID tokens verified on the server using Google's signing keys, issuer, audience, expiry and a server-side subject allowlist. No shared credentials in browser builds.
+- Read-only dashboard status, disabled trading controls, and rejected placeholder capital allocations.
+- Weekly review contract: **Saturday, 09:00 Europe/London**, after the trading week. This defines the intended report schedule; an in-service report generator is still to be built.
+
+## Architecture now
 
 ```mermaid
 flowchart TD
-    subgraph Signals
-        TV[TradingView Webhooks]
-        TA[Trend Agent]
-        MR[Mean Reversion Agent]
-        VA[Volatility Agent]
-        MA[Momentum Agent]
-    end
-
-    subgraph Context
-        MS[Market State Classifier]
-        NF[News Filter]
-    end
-
-    subgraph Core
-        FC[Financial Controller]
-        TR[Treasurer]
-        SM[Savings Manager]
-        TC[Tax Collector]
-        EE[Execution Engine]
-    end
-
-    subgraph Brokers
-        IG[IG – FX Spread Betting]
-        CC[Capital.com – FX & Crypto CFDs]
-        OA[OANDA – FX Specialist]
-    end
-
-    subgraph Infrastructure
-        EB[Event Bus – Durable Objects]
-        D1[(Cloudflare D1)]
-        KV[(Cloudflare KV)]
-        DASH[React Dashboard]
-    end
-
-    TV --> FC
-    TA --> FC
-    MR --> FC
-    VA --> FC
-    MA --> FC
-    MS --> FC
-    NF --> FC
-    FC -->|Capital Request| TR
-    TR -->|Approved| EE
-    EE --> IG
-    EE --> CC
-    EE --> OA
-    EE -->|Trade Closed| TR
-    TR -->|50% profit| SM
-    TR -->|Crypto profit| TC
-    FC --> EB
-    EE --> EB
-    TR --> EB
-    SM --> EB
-    TC --> EB
-    EB --> DASH
-    FC --> D1
-    TR --> D1
-    EE --> D1
-    SM --> D1
-    TC --> D1
+    UI["Dashboard"] -->|Google ID token| AUTH["Server identity verification"]
+    AUTH --> STATUS["Read-only runtime status"]
+    FEEDS["Internal signals and webhooks"] --> FX["FX allowlist"]
+    FX --> LOCK["Execution lock"]
+    TESTS["Offline research tests"] --> SIM["Legacy simulator"]
+    LOCK -.-> NEXT["Future reconciled practice executor"]
 ```
 
-## Profit Flow
+The broker connection, risk ledger, trade lifecycle and forward research pipeline are next. See [development status](docs/development_status.md) for acceptance gates and the distinction between working code and retained prototypes.
 
-```
-Trade closes with profit
-  ├── FX spread bet → TAX-FREE
-  │     └── Profit → Treasurer (50%) + Savings (50%)
-  └── Crypto CFD → CGT applies
-        ├── Tax Collector reserves ~24% (after £3,000 annual exempt)
-        └── Remaining → Treasurer (50%) + Savings (50%)
-```
+## Run and verify
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| **Language** | TypeScript 5.5+ (strict) |
-| **Monorepo** | pnpm workspaces |
-| **Backend** | Cloudflare Workers (5 workers) |
-| **Database** | Cloudflare D1 (SQLite) |
-| **Config Store** | Cloudflare KV |
-| **Real-time** | Cloudflare Durable Objects (WebSocket) |
-| **Dashboard** | React 18 + Vite 5 + TailwindCSS + Recharts + Zustand |
-| **Hosting** | Cloudflare Pages |
-| **FX Broker** | IG, Capital.com, or OANDA (configurable per asset class) |
-| **Crypto Broker** | Capital.com or OANDA (configurable per asset class) |
-| **Auth** | Google OAuth (email allowlist) |
-| **Signal Source** | TradingView webhooks |
-| **Validation** | Zod runtime schemas |
-| **Testing** | Vitest (272 unit tests) |
-| **CI** | GitHub Actions (typecheck + audit + tests) |
-
-## Repository Structure
-
-```
-trading-pod/
-├── packages/
-│   ├── shared/          # Types, schemas, utils (shared across all packages)
-│   ├── agents/          # 4 signal agents + credibility manager
-│   ├── core/            # FC, Treasurer, Savings, Tax, Execution, Risk Rules
-│   ├── backend/
-│   │   ├── fc-worker/           # Financial Controller worker
-│   │   ├── treasurer-worker/    # Treasurer worker
-│   │   ├── savings-worker/      # Savings Manager worker
-│   │   ├── webhook-worker/      # TradingView webhook ingestion
-│   │   ├── event-stream-worker/ # Durable Object WebSocket server
-│   │   ├── d1-schema.sql        # D1 database schema
-│   │   └── kv-schema.json       # KV key patterns
-│   └── dashboard/       # React SPA (Cloudflare Pages)
-├── scripts/             # Migration & upgrade scripts
-├── docs/                # Architecture & setup documentation
-├── .github/workflows/   # CI pipeline
-├── .env.example         # Environment variable template
-├── vitest.config.ts     # Test configuration
-├── tsconfig.base.json   # Shared TypeScript config
-├── pnpm-workspace.yaml  # Monorepo workspace definition
-└── package.json         # Root scripts & dev dependencies
-```
-
-## Signal Agents
-
-| Agent | Strategy | Holding Time |
-|-------|----------|-------------|
-| **Trend** | MA crossover + ATR-based SL/TP | 240 min |
-| **Mean Reversion** | Z-score / Bollinger Bands | 120 min |
-| **Volatility** | ATR compression → expansion | 180 min |
-| **Momentum** | Multi-period ROC + acceleration | 360 min |
-
-Context providers (not signal agents, no credibility scores):
-- **Market State Classifier** — ATR-based regime detection (calm/normal/volatile)
-- **News Filter** — blocks trading during high-impact events
-
-## Credibility Scoring
-
-Agents earn credibility via EMA:
-
-$$S_{new} = \alpha \cdot R + (1 - \alpha) \cdot S_{old}$$
-
-- $\alpha = 0.1$ (smoothing factor)
-- $R = 1$ for correct (profitable) signals, $R = 0$ for incorrect
-- Idle decay: $\lambda = 0.997$ per day
-- Initial score: 0.5, minimum floor: 0.05
-- FC uses credibility-weighted consensus for direction decisions
-
-## Safety Model
-
-1. **Independent agents** — no agent can place a trade alone
-2. **Financial Controller** — deterministic risk checks gate every decision
-3. **Treasurer** — daily capital ceiling (10% of base), scale factor starts at 1%
-4. **Savings Manager** — one-way vault, funds never return to the trading pool
-5. **Tax Collector** — reserves 24% of crypto gains for HMRC CGT
-6. **Risk Rules** — min R:R 1.5, max SL 3%, max 5 trades/day, blocked regimes
-7. **Loss Circuit Breaker** — auto-pauses trading after 3 consecutive losses or 5% daily drawdown
-8. **Paper Trading Mode** — `TRADING_MODE=paper` (default) forces all orders through MockBrokerAdapter
-
-## UK Tax Compliance
-
-- **FX spread bets** → tax-free (classified as gambling by HMRC)
-- **Crypto CFDs** → Capital Gains Tax at 24% (higher rate)
-- **£3,000 annual exempt amount** (2025/26 onwards)
-- Tax Collector reserves approximate CGT as cash-flow buffer
-- Actual year-end calculation: use Koinly or similar (same-day + 30-day matching rules)
-- UK tax year: 6 April – 5 April
-
-## Quick Start
+Node 20+ and the pinned pnpm 9.15.4 are required.
 
 ```bash
-# Clone
-git clone https://github.com/JoelBondoux/Trading-Pod.git
-cd Trading-Pod
-
-# Install dependencies
-pnpm install
-
-# Build all packages
-pnpm -r build
-
-# Typecheck
-pnpm -r typecheck
-
-# Run tests (272 unit tests)
-pnpm test
-
-# Start dashboard dev server
-pnpm --filter @trading-pod/dashboard dev
-
-# Apply D1 schema (local)
-node scripts/migrate-d1.mjs --local
-
-# Deploy a worker (e.g., fc-worker)
-cd packages/backend/fc-worker
-npx wrangler deploy
+corepack pnpm install --frozen-lockfile
+corepack pnpm -r build
+corepack pnpm -r typecheck
+corepack pnpm test
 ```
 
-> **Paper mode is ON by default.** Set `TRADING_MODE=live` in `wrangler.jsonc` when ready for real trading.
-> Copy `.env.example` to `.env` for local development variables.
+Build first: TypeScript project references need the dependency declarations before the recursive type check. On environments with a different global pnpm version, use the explicit `corepack pnpm -r` commands above.
 
-## Monthly Cost
+The test suite covers existing research modules plus signed-token verification, unsafe modes, non-FX ingress, locked controls, capital refusal and the retirement of shared-token WebSockets. See CI for the current test count.
 
-| Service | Cost |
-|---------|------|
-| TradingView Essential | ~$13/mo |
-| Cloudflare Workers/D1/KV/Pages | Free tier |
-| IG | Free (spread-only) |
-| Capital.com | Free (spread-only) |
-| OANDA | Free (spread-only) |
-| GitHub | Free |
-| **Total** | **~$13/mo** |
+For local UI development:
 
-## License
+```bash
+corepack pnpm --filter @trading-pod/dashboard dev
+```
 
-MIT
+Without sign-in configuration the login page stays locked. To configure server-verified access, follow the [install checklist](docs/install_checklist.md). There is no unauthenticated development bypass.
+
+## Stack and reuse
+
+| Component                                    | Current role                                             |
+| -------------------------------------------- | -------------------------------------------------------- |
+| TypeScript / pnpm monorepo                   | Shared contracts and deterministic research modules      |
+| React / Vite / Tailwind / Recharts / Zustand | Dashboard shell and authenticated status                 |
+| Cloudflare Workers                           | Existing HTTP boundaries, now locked                     |
+| D1 / KV                                      | Legacy storage; KV does not control execution readiness  |
+| jose / Google Identity Services              | Server token verification / sign-in UI                   |
+| Vitest / GitHub Actions                      | Regression and safety checks                             |
+| OANDA v20                                    | Selected practice broker; connection not implemented yet |
+
+Existing IG and Capital.com stubs, tax/savings modules and credibility formulas remain historical prototypes. They are not supported execution paths or validated financial guidance. The new runtime admits FX only.
+
+No hosting, paid data, broker account, or LLM service is provisioned by these changes. Deployment and recurring infrastructure costs remain to be chosen.
+
+## Documentation
+
+- [Development status and next milestones](docs/development_status.md)
+- [Architecture](docs/architecture.md)
+- [Safety model](docs/safety_model.md)
+- [Security and authentication](docs/security.md)
+- [Broker setup](docs/broker_setup.md)
+- [Local setup](docs/install_checklist.md)
+- [Dashboard](docs/dashboard_design.md)
+- [Deployment notes](docs/cloudflare_deployment.md)
+- [TradingView ingress](docs/tradingview_setup.md)
+
+The project makes no claim of profitability. Live execution is outside this build and requires a separate design, evidence review and authorisation.

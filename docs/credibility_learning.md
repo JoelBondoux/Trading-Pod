@@ -1,5 +1,7 @@
 # Credibility Learning
 
+> Historical prototype scoring, retained for offline experiments. This formula is not a validated measure of predictive skill and does not grant execution authority. Forward experiments will use the versioned research registry and validation gates in [development status](development_status.md).
+
 ## Overview
 
 Each signal agent has a credibility score ∈ [0.05, 1.0] that the Financial Controller uses to weight its signals during consensus computation. Agents that produce profitable trades gain credibility; agents that produce losing trades lose it.
@@ -11,6 +13,7 @@ Credibility is updated using Exponential Moving Average:
 $$S_{new} = \alpha \cdot R + (1 - \alpha) \cdot S_{old}$$
 
 Where:
+
 - $S_{old}$ = previous credibility score
 - $R$ = reward (1 for profitable trade, 0 for losing trade)
 - $\alpha = 0.1$ (smoothing factor — balances responsiveness vs. stability)
@@ -46,12 +49,12 @@ The FC computes weighted consensus:
 
 ## Parameters
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `alpha` | 0.1 | EMA smoothing factor |
-| `idleDecayLambda` | 0.997 | Daily decay rate |
-| `initialScore` | 0.5 | Score for new agents |
-| `minScore` | 0.05 | Floor (agents are never fully excluded) |
+| Parameter         | Default | Description                             |
+| ----------------- | ------- | --------------------------------------- |
+| `alpha`           | 0.1     | EMA smoothing factor                    |
+| `idleDecayLambda` | 0.997   | Daily decay rate                        |
+| `initialScore`    | 0.5     | Score for new agents                    |
+| `minScore`        | 0.05    | Floor (agents are never fully excluded) |
 
 ## Trade Outcome Processing
 

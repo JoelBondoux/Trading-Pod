@@ -23,7 +23,7 @@ This includes but is not limited to:
 
 1. **References to removed/renamed components** — grep all `.md` files for stale names
 2. **Test counts** — update every mention of test count / test file count after adding or removing tests
-3. **Broker names** — current brokers are IG, Capital.com, OANDA (no Kraken)
+3. **Broker scope** — active development targets OANDA practice and FX only. IG and Capital.com are retired stubs, not supported execution routes. Live execution remains locked.
 4. **Environment variables / secrets** — keep secret lists consistent across docs
 5. **New features** — if adding a new panel, auth flow, or config option, document it in the relevant doc(s)
 

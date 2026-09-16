@@ -29,11 +29,12 @@ jobs:
       - name: Audit dependencies
         run: pnpm audit --audit-level=high || true
 
-      - name: Typecheck
-        run: pnpm -r typecheck
-
       - name: Build
         run: pnpm -r build
+
+      # Project references need declarations from the dependency builds first.
+      - name: Typecheck
+        run: pnpm -r typecheck
 
       - name: Test
         run: pnpm test

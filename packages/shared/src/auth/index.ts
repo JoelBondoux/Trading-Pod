@@ -14,7 +14,7 @@
  */
 export function validateInternalRequest(
   request: Request,
-  internalSecret: string | undefined
+  internalSecret: string | undefined,
 ): boolean {
   if (!internalSecret) {
     console.error("INTERNAL_SERVICE_SECRET not configured — rejecting request");
@@ -24,24 +24,6 @@ export function validateInternalRequest(
   if (!provided) return false;
 
   return timingSafeEqual(provided, internalSecret);
-}
-
-/**
- * Validate a dashboard WebSocket token (passed as ?token= query parameter).
- */
-export function validateDashboardToken(
-  request: Request,
-  dashboardToken: string | undefined
-): boolean {
-  if (!dashboardToken) {
-    console.error("DASHBOARD_TOKEN not configured — rejecting WebSocket");
-    return false;
-  }
-  const url = new URL(request.url);
-  const provided = url.searchParams.get("token");
-  if (!provided) return false;
-
-  return timingSafeEqual(provided, dashboardToken);
 }
 
 /**
@@ -58,10 +40,7 @@ export function forbidden(): Response {
  */
 export function internalError(error: unknown): Response {
   console.error("Internal error:", error);
-  return Response.json(
-    { error: "Internal server error" },
-    { status: 500 }
-  );
+  return Response.json({ error: "Internal server error" }, { status: 500 });
 }
 
 // ---------------------------------------------------------------------------

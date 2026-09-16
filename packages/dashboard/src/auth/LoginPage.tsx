@@ -5,8 +5,7 @@
 import { useEffect, useRef } from "react";
 import { useAuth } from "./AuthContext.js";
 
-const GOOGLE_CLIENT_ID =
-  (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID ?? "";
+const GOOGLE_CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID ?? "";
 
 export function LoginPage() {
   const { loading, error } = useAuth();
@@ -36,9 +35,7 @@ export function LoginPage() {
           Sign in with your Google account to access the dashboard.
         </p>
 
-        {loading && (
-          <p className="text-gray-500 text-sm animate-pulse">Loading...</p>
-        )}
+        {loading && <p className="text-gray-500 text-sm animate-pulse">Loading...</p>}
 
         {error && (
           <div className="bg-pod-red/10 border border-pod-red/30 rounded-md px-4 py-3">
@@ -49,8 +46,7 @@ export function LoginPage() {
         {!GOOGLE_CLIENT_ID && !loading && (
           <div className="bg-pod-accent/10 border border-pod-accent/30 rounded-md px-4 py-3">
             <p className="text-pod-accent text-sm">
-              Google OAuth not configured. Set <code>VITE_GOOGLE_CLIENT_ID</code> in your
-              environment to enable authentication.
+              Dashboard access is unavailable until sign-in has been configured.
             </p>
           </div>
         )}
@@ -59,7 +55,7 @@ export function LoginPage() {
         <div ref={buttonRef} className="flex justify-center" />
 
         <p className="text-gray-600 text-xs mt-8">
-          Access is restricted to approved email addresses.
+          Access is restricted to approved accounts and verified by the server.
         </p>
       </div>
     </div>

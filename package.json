@@ -2,7 +2,7 @@
   "name": "trading-pod",
   "private": true,
   "version": "0.1.0",
-  "description": "Fully automated, low-risk, multi-agent trading system",
+  "description": "FX research platform with a locked OANDA practice execution foundation",
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",

@@ -1,111 +1,23 @@
-# Dashboard Design
+# Dashboard
 
-## Overview
+The retained React shell is being adapted for the FX experiment. The current screen is a **read-only foundation**.
 
-The Trading-Pod dashboard is a React SPA that connects to the event-stream Durable Object via WebSocket for real-time updates. It provides visibility into all system components.
+## Sign-in
 
-## Technology
+Google Identity Services returns an ID token to the UI. The UI asks the FC /dashboard/session endpoint to verify it. Only a verified identity with an approved server-side subject can enter the dashboard. Missing client configuration shows a locked setup state; there is no development bypass.
 
-- **React 18** — UI framework
-- **Vite 5** — Build tool, dev server on port 3000
-- **TailwindCSS 3.4** — Utility-first styling with custom "pod" theme
-- **Recharts** — Charts (PnL sparklines, savings growth curve)
-- **Zustand** — Lightweight state management with domain slices
-- **Cloudflare Pages** — Static deployment
+Identity and token live in memory only. Reloading requires sign-in again. A timer expires the identity; sign-out invalidates pending sign-in callbacks. Client-side decoding and sessionStorage are not accepted as authentication.
 
-## Panels
+## Status and controls
 
-### 1. Overview
-Compact summary of all subsystems on a single page. Quick glance at system health.
+Authenticated status is polled every 30 seconds through /dashboard/status. The UI clears status on network/auth/schema failure, unmount or sign-out. “Status connected” only describes the API connection.
 
-### 2. Agent Tiles
-- 4 agent cards showing: name, credibility badge, latest signal details
-- Credibility badge: green (≥70%), amber (≥40%), red (<40%)
-- Recent signals table: time, agent, pair, direction, confidence, source
+A persistent banner states FX research, OANDA practice, execution locked and broker not connected. The Controls panel has no resume or agent-freeze action. Settings displays the server's mode, allowlisted pairs and Saturday 09:00 Europe/London review cadence. It does not write broker settings.
 
-### 3. FC Pipeline
-- Visual pipeline: Signals → Consensus → Risk Checks → Decision
-- Each stage is a box with details
-- Decision history table with pass/fail indicators
+Agent, FC, Treasurer, Execution and Replay panels are retained shells without an active event feed. Empty panels mean no connected data, not zero measured P&L. Tax and Savings are removed from navigation; their prototype components remain in the source tree for historical reference.
 
-### 4. Treasurer
-- Stat cards: Base Capital, Scale Factor, Daily Allocation
-- Rolling PnL sparkline (cumulative area chart)
-- Daily ceiling usage indicator (turns red at >80%)
+## Next work
 
-### 5. Execution
-- Open positions table: pair, direction, entry, SL, TP, size, broker, status
-- Closed trades table with PnL column
-- Net PnL summary
+Add real account/quote status only after read-only broker integration. Then build trade charts, evidence links, signal attribution, execution timelines, data freshness and incident views from the durable ledger. Operational controls need revocable sessions, roles, audit records and server acknowledgement before any optimistic UI state is allowed.
 
-### 6. Savings Vault
-- Total locked amount (permanently extracted profits)
-- Deposit count and last deposit time
-- Growth curve (populates over time)
-
-### 7. Tax Reserve
-- Tax year, total reserved, annual exempt remaining
-- Important UK tax notes (FX = tax-free, crypto = CGT)
-- Reserve is approximate — recommend Koinly for final calc
-
-### 8. Decision Replay
-- List of all decisions (left panel)
-- Detail view (right panel): meta, risk checks, contributing signals
-- Useful for auditing why a decision was approved/rejected
-
-### 9. Control Panel
-- Global trading pause button
-- Per-agent freeze/unfreeze toggles
-- Real-time event log (last 100 events)
-
-### 10. Settings
-- Account info (Google profile, email)
-- Trading mode toggle (paper / live)
-- Broker selector per asset class:
-  - FX: IG, Capital.com, OANDA, or Mock
-  - Crypto: Capital.com, OANDA, or Mock
-- Preferences saved to FC worker KV
-- Team invites placeholder (coming soon)
-
-## Authentication
-
-- **Google OAuth** via Google Identity Services (GIS)
-- Client-side JWT decode — no server callback needed
-- Email allowlist via `VITE_ALLOWED_EMAILS` env var (comma-separated)
-- Session stored in `sessionStorage`, auto-expires with JWT
-- Auth is optional — when `VITE_GOOGLE_CLIENT_ID` is unset, the dashboard is open
-- Login page renders Google Sign-In button with "Sign in with Google" prompt
-- Sidebar shows user avatar, name, email, and sign-out button when logged in
-
-## Theme
-
-Dark theme optimized for trading:
-
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `pod-bg` | `#0f1117` | Page background |
-| `pod-surface` | `#1a1d27` | Card/panel background |
-| `pod-border` | `#2a2d37` | Borders, dividers |
-| `pod-accent` | `#3b82f6` | Primary accent (blue) |
-| `pod-green` | `#22c55e` | Profitable, long, success |
-| `pod-red` | `#ef4444` | Loss, short, error |
-| `pod-amber` | `#f59e0b` | Warning, pending |
-
-## WebSocket Connection
-
-- Connects to `VITE_WS_URL` environment variable (or `ws://localhost:8787/ws` in dev)
-- Automatic reconnection with exponential backoff (1s base, 30s max)
-- Connection status indicator in sidebar (green dot = connected)
-- All events are dispatched through Zustand's `handleEvent()` method
-
-## State Management
-
-Zustand store with domain slices:
-- `AgentsSlice` — signals array, credibility records
-- `FCSlice` — decisions array, latest decision
-- `TreasurerSlice` — treasurer state
-- `ExecutionSlice` — open + closed trades
-- `SavingsSlice` — savings state
-- `TaxSlice` — tax reserve state
-- `ConnectionSlice` — WebSocket connected flag, event log
-- `ControlSlice` — frozen agents set, trading paused flag
+The new report generator must distinguish observed forward results from simulated or historical data and label insufficient evidence explicitly.

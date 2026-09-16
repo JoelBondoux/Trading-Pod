@@ -2,7 +2,7 @@
 // Execution Engine Tests — Trade execution, broker interaction, PnL calculation
 // ============================================================================
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { ExecutionEngine } from "../src/execution_engine/engine.js";
 import type { BrokerAdapter } from "../src/execution_engine/broker_adapter.js";
 import type { FCDecision, CapitalResponse, AgentSignal } from "@trading-pod/shared";
@@ -13,7 +13,7 @@ import type { FCDecision, CapitalResponse, AgentSignal } from "@trading-pod/shar
 
 function makeSignal(overrides: Partial<AgentSignal> = {}): AgentSignal {
   return {
-    signalId: "sig-1",
+    signalId: "00000000-0000-4000-8000-000000000001",
     agentId: "trend_agent",
     source: "internal",
     assetClass: "fx",
@@ -24,7 +24,7 @@ function makeSignal(overrides: Partial<AgentSignal> = {}): AgentSignal {
     takeProfit: 1.35,
     holdingTimeMinutes: 240,
     justification: "test signal",
-    currentPrice: 1.30,
+    currentPrice: 1.3,
     timestamp: new Date().toISOString(),
     ...overrides,
   };
@@ -58,6 +58,8 @@ function makeCapitalResponse(overrides: Partial<CapitalResponse> = {}): CapitalR
 function makeMockBroker(overrides: Record<string, unknown> = {}): BrokerAdapter {
   return {
     name: "mock",
+    displayName: "Test mock",
+    supportedAssets: ["fx"],
     placeOrder: vi.fn().mockResolvedValue({
       orderId: "mock-001",
       status: "accepted",
@@ -117,10 +119,7 @@ describe("ExecutionEngine.execute — failure paths", () => {
     const broker = makeMockBroker();
     const engine = new ExecutionEngine(broker);
 
-    const result = await engine.execute(
-      makeDecision({ approved: false }),
-      makeCapitalResponse()
-    );
+    const result = await engine.execute(makeDecision({ approved: false }), makeCapitalResponse());
 
     expect(result.status).toBe("error");
     expect(result.errorMessage).toMatch(/not approved/i);
@@ -131,10 +130,7 @@ describe("ExecutionEngine.execute — failure paths", () => {
     const broker = makeMockBroker();
     const engine = new ExecutionEngine(broker);
 
-    const result = await engine.execute(
-      makeDecision(),
-      makeCapitalResponse({ approved: false })
-    );
+    const result = await engine.execute(makeDecision(), makeCapitalResponse({ approved: false }));
 
     expect(result.status).toBe("error");
     expect(result.errorMessage).toMatch(/not approved/i);
@@ -200,7 +196,7 @@ describe("ExecutionEngine.closePosition", () => {
     assetClass: "fx" as const,
     instrument: "GBP/USD",
     direction: "long" as const,
-    entryPrice: 1.30,
+    entryPrice: 1.3,
     stopLoss: 1.25,
     takeProfit: 1.35,
     positionSize: 1000,
@@ -229,21 +225,21 @@ describe("ExecutionEngine.closePosition", () => {
   });
 
   it("computes positive PnL for a profitable short", async () => {
-    const shortExec = { ...baseExecution, direction: "short" as const, entryPrice: 1.30 };
+    const shortExec = { ...baseExecution, direction: "short" as const, entryPrice: 1.3 };
     const result = await engine.closePosition(shortExec, 1.28);
     // pnl = (1.30 - 1.28) * 1000 - 2 = 20 - 2 = 18
     expect(result.pnl).toBeCloseTo(18, 2);
   });
 
   it("computes negative PnL for a losing short", async () => {
-    const shortExec = { ...baseExecution, direction: "short" as const, entryPrice: 1.30 };
+    const shortExec = { ...baseExecution, direction: "short" as const, entryPrice: 1.3 };
     const result = await engine.closePosition(shortExec, 1.32);
     // pnl = (1.30 - 1.32) * 1000 - 2 = -20 - 2 = -22
     expect(result.pnl).toBeCloseTo(-22, 2);
   });
 
   it("handles break-even exit (PnL equals negative fees)", async () => {
-    const result = await engine.closePosition(baseExecution, 1.30);
+    const result = await engine.closePosition(baseExecution, 1.3);
     // pnl = (1.30 - 1.30) * 1000 - 2 = -2 (fees only)
     expect(result.pnl).toBeCloseTo(-2, 2);
   });

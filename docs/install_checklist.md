@@ -1,437 +1,59 @@
-# 🚀 Trading-Pod — Beginner Install Checklist
+# Local development checklist
 
-A step-by-step guide to go from zero to a running Trading-Pod. Tick each box as you go.
+This installs and tests the foundation. It does not connect a broker, deploy services or start trading.
 
----
+## 1. Toolchain and checks
 
-## Phase 1 — Install Developer Tools
+Use Node 20+ and pnpm 9.15.4, pinned by packageManager.
 
-> You only need to do this once on your machine.
+```bash
+corepack pnpm install --frozen-lockfile
+corepack pnpm -r build
+corepack pnpm -r typecheck
+corepack pnpm test
+```
 
-- [ ] **Install Node.js 20+**
-  - Download from [nodejs.org](https://nodejs.org/) (LTS version)
-  - Verify: open a terminal and run `node --version` — should show `v20.x.x` or higher
+The global pnpm in some environments can be newer; use these explicit Corepack commands. Build first so referenced TypeScript declarations exist. Worker sources are included in type checks; CI also bundles the dashboard.
 
-- [ ] **Install pnpm**
-  - In your terminal run: `npm install -g pnpm@9`
-  - Verify: `pnpm --version` — should show `9.x.x`
+## 2. Dashboard identity
 
-- [ ] **Install Git**
-  - Download from [git-scm.com](https://git-scm.com/)
-  - Verify: `git --version`
+Configure a Google web OAuth client with the exact local/deployed JavaScript origin. The public client ID must match on both frontend and FC server.
 
-- [ ] **Install a code editor**
-  - Recommended: [VS Code](https://code.visualstudio.com/)
+- Dashboard ignored .env.local: VITE_GOOGLE_CLIENT_ID and VITE_API_URL (default /api).
+- FC wrangler vars: GOOGLE_CLIENT_ID, DASHBOARD_ORIGIN (http://localhost:3000 locally), TRADING_MODE=RESEARCH.
+- FC ignored .dev.vars: DASHBOARD_ALLOWED_SUBJECTS, plus INTERNAL_SERVICE_SECRET if testing internal endpoints.
 
----
+Use already verified Google subject IDs in the server allowlist. See [security](security.md). Do not supply credentials in chat, disable verification or add a browser-side email allowlist.
 
-## Phase 2 — Clone & Install the Project
+Missing identity configuration leaves the UI locked and the dashboard API returns 503. In-service secrets and account IDs are never frontend variables.
 
-- [ ] **Clone the repo**
-  ```bash
-  git clone https://github.com/JoelBondoux/Trading-Pod.git
-  cd Trading-Pod
-  ```
+## 3. Local services
 
-- [ ] **Install all dependencies**
-  ```bash
-  pnpm install
-  ```
-  This reads `pnpm-workspace.yaml` and installs dependencies for every package at once.
+From separate terminals:
 
-- [ ] **Build the shared package** (other packages depend on it)
-  ```bash
-  pnpm --filter @trading-pod/shared build
-  pnpm --filter @trading-pod/agents build
-  ```
-
-- [ ] **Verify everything compiles**
-  ```bash
-  pnpm -r typecheck
-  ```
-  ✅ You should see all 9 packages say `Done` with no errors.
-
-- [ ] **Run the test suite**
-  ```bash
-  pnpm test
-  ```
-  ✅ You should see 272 tests pass across 21 test files.
-
-- [ ] **Copy the environment template**
-
-  **PowerShell (recommended on Windows):**
-  ```powershell
-  Copy-Item .env.example .env
-  Copy-Item packages/dashboard/.env.example packages/dashboard/.env
-  ```
-
-  **CMD (Windows):**
-  ```cmd
-  copy .env.example .env
-  copy packages\dashboard\.env.example packages\dashboard\.env
-  ```
-
-  **macOS / Linux:**
-  ```bash
-  cp .env.example .env
-  cp packages/dashboard/.env.example packages/dashboard/.env
-  ```
-
-  Edit the `.env` files to fill in your values. These files are git-ignored.
-
----
-
-## Phase 3 — Run the Dashboard Locally
-
-> This gives you the React dashboard on your machine — no cloud needed yet.
-
-- [ ] **Start the dev server**
-  ```bash
-  pnpm --filter @trading-pod/dashboard dev
-  ```
-
-- [ ] **Open in browser**
-  - Go to [http://localhost:3000](http://localhost:3000)
-  - You should see the Trading-Pod dashboard with a dark theme
-  - The "Disconnected" indicator is normal — the WebSocket backend isn't deployed yet
-
----
-
-## Phase 4 — Set Up Cloudflare (Free Tier)
-
-> This is where the backend runs. Everything below is free.
-
-- [ ] **Create a Cloudflare account**
-  - Sign up at [dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up)
-  - Free plan is sufficient
-
-- [ ] **Install the Wrangler CLI**
-  ```bash
-  npm install -g wrangler
-  ```
-
-- [ ] **Log in to Cloudflare from your terminal**
-  ```bash
-  npx wrangler login
-  ```
-  A browser window opens — click "Allow".
-
-- [ ] **Create the D1 database**
-  ```bash
-  npx wrangler d1 create trading-pod-db
-  ```
-  📝 **Write down the `database_id`** from the output — you'll need it next.
-
-- [ ] **Update the database ID in wrangler configs**
-  Open each of these files and replace `YOUR_D1_DATABASE_ID` with your actual ID:
-  - `packages/backend/fc-worker/wrangler.jsonc`
-  - `packages/backend/treasurer-worker/wrangler.jsonc`
-  - `packages/backend/savings-worker/wrangler.jsonc`
-
-- [ ] **Apply the database schema**
-  
-  Preview what will run first:
-  ```bash
-  node scripts/migrate-d1.mjs --dry-run
-  ```
-  ✅ You should see 16 statements (9 CREATE TABLE + 7 CREATE INDEX).
-
-  Then apply to production:
-  ```bash
-  node scripts/migrate-d1.mjs
-  ```
-  ✅ You should see `Migration complete: 16 succeeded, 0 failed`.
-
-  For local development, use:
-  ```bash
-  node scripts/migrate-d1.mjs --local
-  ```
-
-- [ ] **Create the KV namespace**
-  ```bash
-  npx wrangler kv namespace create TRADING_POD_KV
-  ```
-  📝 **Write down the `namespace id`** from the output.
-
-- [ ] **Update the KV namespace ID in wrangler configs**
-  Open these files and replace `YOUR_KV_NAMESPACE_ID` with your actual ID:
-  - `packages/backend/fc-worker/wrangler.jsonc`
-  - `packages/backend/webhook-worker/wrangler.jsonc`
-
-- [ ] **Seed the KV with default config**
-  Replace `<id>` with your KV namespace ID:
-  ```bash
-  npx wrangler kv key put --namespace-id=<id> "config:risk_rules" "{\"minRewardRiskRatio\":1.5,\"maxStopLossPercent\":3.0,\"minStopLossPercent\":0.1,\"maxTradesPerDay\":5,\"minConfidence\":0.6,\"blockedRegimes\":[\"volatile\"],\"newsBlockWindowMinutes\":30}"
-  ```
-  ```bash
-  npx wrangler kv key put --namespace-id=<id> "config:webhook_secret" "\"change-me-to-a-real-secret\""
-  ```
-
----
-
-## Phase 5 — Deploy the Backend Workers
-
-> Deploy all 5 workers to Cloudflare's edge network.
->
-> **Order matters!** Workers with service bindings must be deployed *after*
-> the workers they reference, or you'll get error 10143.
-
-**Step 1 — Leaf workers** (no service bindings — deploy first, any order):
-
-- [ ] **Deploy Treasurer worker**
-  ```bash
-  cd packages/backend/treasurer-worker
-  npx wrangler deploy
-  cd ../../..
-  ```
-
-- [ ] **Deploy Event Stream worker** (WebSocket server)
-  ```bash
-  cd packages/backend/event-stream-worker
-  npx wrangler deploy
-  cd ../../..
-  ```
-
-- [ ] **Deploy Savings worker**
-  ```bash
-  cd packages/backend/savings-worker
-  npx wrangler deploy
-  cd ../../..
-  ```
-
-**Step 2 — FC worker** (depends on Treasurer + Event Stream):
-
-- [ ] **Deploy FC worker**
-  ```bash
-  cd packages/backend/fc-worker
-  npx wrangler deploy
-  cd ../../..
-  ```
-
-**Step 3 — Webhook worker** (depends on FC — deploy **last**):
-
-- [ ] **Deploy Webhook worker**
-  ```bash
-  cd packages/backend/webhook-worker
-  npx wrangler deploy
-  cd ../../..
-  ```
-
-- [ ] **Note your worker URLs**
-  After each deploy, Wrangler prints a URL like:
-  ```
-  https://fc-worker.your-subdomain.workers.dev
-  ```
-  📝 Write these down — you'll need the event-stream-worker URL for the dashboard.
-
-- [ ] **Set worker secrets**
-  ```bash
-  # Internal service secret (same value on ALL workers)
-  wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-fc
-  wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-treasurer
-  wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-savings
-  wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-event-stream
-  wrangler secret put INTERNAL_SERVICE_SECRET --name trading-pod-webhook
-
-  # Dashboard token (event-stream worker only)
-  wrangler secret put DASHBOARD_TOKEN --name trading-pod-event-stream
-  ```
-
-> ⚠️ **Paper mode is ON by default.** The `TRADING_MODE` variable in each worker's `wrangler.jsonc` is set to `"paper"`. All orders go through `MockBrokerAdapter`. Set to `"live"` only when you are ready to trade with real money.
-
----
-
-## Phase 6 — Deploy the Dashboard
-
-- [ ] **Build the dashboard**
-  ```bash
-  pnpm --filter @trading-pod/dashboard build
-  ```
-
-- [ ] **Create a Cloudflare Pages project**
-  ```bash
-  npx wrangler pages project create trading-pod-dashboard
-  ```
-
-- [ ] **Deploy to Pages**
-  ```bash
-  npx wrangler pages deploy packages/dashboard/dist
-  ```
-
-- [ ] **Set the WebSocket URL**
-  - Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → Pages → `trading-pod-dashboard` → Settings → Environment Variables
-  - Add: `VITE_WS_URL` = `wss://event-stream-worker.your-subdomain.workers.dev/ws`
-  - Re-deploy after setting the variable
-
----
-
-## Phase 6b — Set Up Google OAuth (Optional but Recommended)
-
-> Adds login protection to your dashboard. Without this, the dashboard is open to anyone with the URL.
-
-- [ ] **Create a Google Cloud project**
-  - Go to [console.cloud.google.com](https://console.cloud.google.com)
-  - Create a new project (e.g., "Trading-Pod")
-
-- [ ] **Configure the OAuth consent screen**
-  - APIs & Services → OAuth consent screen
-  - User Type: **External** (or Internal if using Google Workspace)
-  - Fill in the app name and contact email
-  - No scopes needed (we only use the ID token)
-
-- [ ] **Create an OAuth Client ID**
-  - APIs & Services → Credentials → Create Credentials → OAuth client ID
-  - Application type: **Web application**
-  - Authorized JavaScript origins: add your Cloudflare Pages URL (e.g., `https://trading-pod-dashboard.pages.dev`)
-  - Also add `http://localhost:3000` for local development
-  - 📝 **Copy the Client ID** (looks like `123456789-abcdef.apps.googleusercontent.com`)
-
-- [ ] **Set dashboard environment variables**
-  In Cloudflare Pages → Settings → Environment Variables, add:
-  - `VITE_GOOGLE_CLIENT_ID` = your Client ID from above
-  - `VITE_ALLOWED_EMAILS` = comma-separated list of allowed emails (e.g., `you@gmail.com,friend@gmail.com`)
-
-- [ ] **Update local `.env` too**
-  In `packages/dashboard/.env`:
-  ```dotenv
-  VITE_GOOGLE_CLIENT_ID=your-client-id-here
-  VITE_ALLOWED_EMAILS=you@gmail.com
-  ```
-
-- [ ] **Re-deploy the dashboard**
-  ```bash
-  pnpm --filter @trading-pod/dashboard build
-  npx wrangler pages deploy packages/dashboard/dist
-  ```
-
-- [ ] **Verify login works**
-  - Visit your dashboard URL — you should see the Google Sign-In page
-  - Sign in with an allowed email — you should see the dashboard
-  - Sign in with a non-allowed email — you should see an "Access denied" error
-
----
-
-## Phase 7 — Set Up Broker Accounts (When Ready to Trade)
-
-> ⚠️ **Start with demo/paper accounts first!** Don't connect real money until you're confident.
-
-### IG (FX Spread Betting — Tax-Free)
-
-- [ ] **Create an IG account** at [ig.com/uk](https://www.ig.com/uk)
-- [ ] **Open a spread betting account** (not CFD — spread betting profits are tax-free in UK)
-- [ ] **Generate an API key**: My IG → Settings → API key management
-- [ ] **Use demo mode first**: IG provides a demo environment for testing
-- [ ] **Store secrets in the FC worker**:
-  ```bash
-  cd packages/backend/fc-worker
-  npx wrangler secret put IG_API_KEY
-  npx wrangler secret put IG_USERNAME
-  npx wrangler secret put IG_PASSWORD
-  cd ../../..
-  ```
-  (You'll be prompted to type/paste each value)
-
-### Capital.com (FX & Crypto CFDs)
-
-- [ ] **Create a Capital.com account** at [capital.com](https://capital.com)
-- [ ] **Open a CFD account**
-- [ ] **Generate an API key**: Settings → API → generate key
-- [ ] **Use demo mode first**: Capital.com provides a demo API environment
-- [ ] **Store secrets**:
-  ```bash
-  cd packages/backend/fc-worker
-  npx wrangler secret put CAPITAL_API_KEY
-  npx wrangler secret put CAPITAL_EMAIL
-  npx wrangler secret put CAPITAL_PASSWORD
-  cd ../../..
-  ```
-
-### OANDA (FX Specialist)
-
-- [ ] **Create an OANDA account** at [oanda.com](https://www.oanda.com)
-- [ ] **Create a practice account** first for testing
-- [ ] **Generate an API token**: My Account → API Access → Generate token
-- [ ] **Note your Account ID** (shown in account list)
-- [ ] **Store secrets**:
-  ```bash
-  cd packages/backend/fc-worker
-  npx wrangler secret put OANDA_API_TOKEN
-  npx wrangler secret put OANDA_ACCOUNT_ID
-  cd ../../..
-  ```
-
-> 💡 You don't need all three brokers — choose the one(s) that suit you. Use the dashboard Settings panel to select which broker handles each asset class.
-
----
-
-## Phase 8 — Set Up TradingView Webhooks (Optional)
-
-> Only needed if you want TradingView alerts to feed into the system.
-
-- [ ] **Get a TradingView paid plan** (~$13/month — Essential plan or higher)
-  - Webhooks are not available on the free plan
-- [ ] **Create an alert on a chart**
-  1. Add your indicator/strategy to a chart
-  2. Click the "Alerts" bell → "Create Alert"
-  3. Under Notifications → enable "Webhook URL"
-  4. Set URL: `https://webhook-worker.your-subdomain.workers.dev/webhook/tradingview`
-  5. Set message body (see [tradingview_setup.md](tradingview_setup.md) for the JSON format)
-- [ ] **Update the webhook secret**
-  - Make sure the `secret` field in your TradingView alert matches the one in KV (`config:webhook_secret`)
-
----
-
-## ✅ Verification Checklist
-
-Once everything is deployed, confirm each piece is working:
-
-| Check | How to Verify |
-|-------|--------------|
-| Dashboard loads | Visit your Cloudflare Pages URL |
-| WebSocket connects | Green dot in dashboard sidebar says "Connected" |
-| Webhook accepts signals | `curl -X POST https://webhook-worker.…/webhook/tradingview -H "Content-Type: application/json" -d '{"secret":"your-secret","ticker":"GBPUSD","action":"buy","price":1.265,"stopLoss":1.26,"takeProfit":1.275,"confidence":0.75,"holdingTimeMinutes":240,"justification":"Test","assetClass":"fx","agentId":"test"}'` — should return 200 |
-| D1 is storing data | `npx wrangler d1 execute trading-pod-db --command="SELECT count(*) FROM trades"` |
-| Workers are healthy | Cloudflare Dashboard → Workers & Pages → check each worker shows "Active" |
-
----
-
-## 💰 Monthly Cost Summary
-
-| Service | Cost |
-|---------|------|
-| TradingView Essential | ~$13/mo (only if using webhooks) |
-| Cloudflare (Workers, D1, KV, Pages) | **Free** |
-| IG account | **Free** (spreads only) |
-| Capital.com account | **Free** (spreads only) |
-| OANDA account | **Free** (spreads only) |
-| GitHub | **Free** |
-| **Total** | **$0 – $13/mo** |
-
----
-
-## 🆘 Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| Tests fail | Run `pnpm test` — check error output for details |
-| `pnpm: command not found` | Run `npm install -g pnpm@9` |
-| `wrangler: command not found` | Run `npm install -g wrangler` |
-| Typecheck fails on `shared` | Make sure you ran `pnpm --filter @trading-pod/shared build` first |
-| Typecheck fails on `agents`/`core` | Build shared first, then agents: `pnpm --filter @trading-pod/agents build` |
-| Dashboard shows "Disconnected" | The event-stream-worker isn't deployed yet, or `VITE_WS_URL` is wrong |
-| `D1_ERROR: no such table` | You forgot to run the schema: `npx wrangler d1 execute trading-pod-db --file=packages/backend/d1-schema.sql` |
-| Worker deploy fails with binding error | Check that `database_id` and `kv_namespace_id` are set correctly in `wrangler.jsonc` |
-| Deploy fails: "Service binding references Worker which was not found" (error 10143) | You deployed in the wrong order — deploy leaf workers first (treasurer, event-stream, savings), then fc-worker, then webhook-worker last. See Phase 5 above. |
-| TradingView webhook returns 401 | Your `secret` in the alert body doesn't match `config:webhook_secret` in KV |
-| TradingView webhook returns 403 | The request isn't coming from a TradingView IP — check the IP whitelist |
-
----
-
-## 📚 Further Reading
-
-- [Architecture](architecture.md) — how the system fits together
-- [Safety Model](safety_model.md) — all the guardrails that protect your capital
-- [UK Tax Model](uk_tax_model.md) — how FX and crypto taxes work
-- [Broker Setup](broker_setup.md) — detailed IG, Capital.com, and OANDA API reference
-- [Cloudflare Deployment](cloudflare_deployment.md) — advanced deployment details
-- [TradingView Setup](tradingview_setup.md) — webhook JSON format and testing
+```bash
+corepack pnpm --filter @trading-pod/fc-worker exec wrangler dev --port 8788
+corepack pnpm --filter @trading-pod/dashboard dev
+```
+
+Vite serves port 3000 and proxies /api to port 8788. Existing D1/KV/service bindings need local Wrangler configuration if you use historical/internal APIs. The new identity/status routes do not read these storage bindings.
+
+Do not run the root migration/upgrade deployment helpers as an installation step; they are inherited and not the practice runtime provisioning workflow.
+
+## 4. Expected outcomes
+
+| Check                            | Expected                                        |
+| -------------------------------- | ----------------------------------------------- |
+| Missing Google frontend config   | Login/configuration screen, no dashboard access |
+| Missing server subject allowlist | Dashboard API 503                               |
+| Invalid/forged identity          | 401/403                                         |
+| Valid configured identity        | Read-only status and PAUSED                     |
+| FC health with TRADING_MODE=live | 503, LIVE_LOCKED                                |
+| Attempt to resume                | 409                                             |
+| Valid FX signal to FC            | 503, accepted=false                             |
+| Non-FX signal                    | 400                                             |
+| Capital request                  | 503, approved=false                             |
+| Legacy /ws                       | 410                                             |
+| OANDA connection                 | Unavailable in this milestone                   |
+
+The OANDA v20 practice connection, transactional ledger and order lifecycle are the next milestones, not further setup switches.

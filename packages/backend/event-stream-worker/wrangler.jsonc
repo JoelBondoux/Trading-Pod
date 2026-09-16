@@ -7,17 +7,17 @@
     "bindings": [
       {
         "name": "EVENT_STREAM_DO",
-        "class_name": "EventStreamDO"
-      }
-    ]
+        "class_name": "EventStreamDO",
+      },
+    ],
   },
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["EventStreamDO"]
-    }
-  ]
+      "new_sqlite_classes": ["EventStreamDO"],
+    },
+  ],
   // Secrets (set via `wrangler secret put`):
   //   INTERNAL_SERVICE_SECRET — shared auth token for /broadcast and /status
-  //   DASHBOARD_TOKEN — auth token for WebSocket connections from dashboard
+  // Shared dashboard tokens are retired; /ws returns 410.
 }

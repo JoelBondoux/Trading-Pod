@@ -3,25 +3,12 @@
 // ============================================================================
 
 // Types
-export type {
-  AgentSignal,
-  AgentMeta,
-  AssetClass,
-  Direction,
-} from "./types/agent.js";
+export type { AgentSignal, AgentMeta, AssetClass, Direction } from "./types/agent.js";
 
-export type {
-  CredibilityRecord,
-  CredibilityParams,
-} from "./types/credibility.js";
+export type { CredibilityRecord, CredibilityParams } from "./types/credibility.js";
 export { DEFAULT_CREDIBILITY_PARAMS } from "./types/credibility.js";
 
-export type {
-  FCDecision,
-  RiskCheck,
-  WeightedConsensus,
-  RiskRuleConfig,
-} from "./types/fc.js";
+export type { FCDecision, RiskCheck, WeightedConsensus, RiskRuleConfig } from "./types/fc.js";
 export { DEFAULT_RISK_RULES } from "./types/fc.js";
 
 export type {
@@ -41,18 +28,10 @@ export type {
 
 export type { SavingsDeposit, SavingsState } from "./types/savings.js";
 
-export type {
-  TaxReserveEntry,
-  TaxReserveState,
-  TaxCollectorConfig,
-} from "./types/tax.js";
+export type { TaxReserveEntry, TaxReserveState, TaxCollectorConfig } from "./types/tax.js";
 export { DEFAULT_TAX_CONFIG, getUKTaxYear } from "./types/tax.js";
 
-export type {
-  MarketRegime,
-  MarketStateOutput,
-  NewsFilterOutput,
-} from "./types/context.js";
+export type { MarketRegime, MarketStateOutput, NewsFilterOutput } from "./types/context.js";
 
 export type {
   SystemEvent,
@@ -103,13 +82,26 @@ export {
 } from "./utils/index.js";
 
 // Auth
-export {
-  validateInternalRequest,
-  validateDashboardToken,
-  forbidden,
-  internalError,
-} from "./auth/index.js";
+export { validateInternalRequest, forbidden, internalError } from "./auth/index.js";
 
 // Logger
 export { createLogger } from "./logger.js";
 export type { LogLevel, LogEntry, LoggerOptions } from "./logger.js";
+
+export {
+  RuntimeModeSchema,
+  FxInstrumentSchema,
+  FX_INSTRUMENTS,
+  OANDA_PRACTICE_ENDPOINTS,
+  WEEKLY_REVIEW,
+  getRuntimeStatus,
+  DashboardSessionSchema,
+  RuntimeStatusSchema,
+} from "./runtime.js";
+export type { RuntimeMode, RuntimeStatus, FxInstrument } from "./runtime.js";
+export {
+  FxSignalSchema,
+  FxWebhookSchema,
+  FxCapitalRequestSchema,
+  FxCapitalReturnSchema,
+} from "./schemas/index.js";

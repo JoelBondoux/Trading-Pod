@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@trading-pod/shared": "workspace:*"
+    "@trading-pod/shared": "workspace:*",
+    "jose": "6.2.12"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240718.0",

@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { z } from "zod";
+import { FxInstrumentSchema } from "../runtime.js";
 
 // --- Agent Signal Schema ---
 export const AgentSignalSchema = z.object({
@@ -120,3 +121,19 @@ export const TradingViewWebhookSchema = z.object({
   assetClass: z.enum(["fx", "crypto"]),
   agentId: z.string().default("tradingview_pine"),
 });
+
+// Original schemas remain available for historical records and offline tests.
+// Active ingestion boundaries use these narrower FX contracts.
+export const FxSignalSchema = AgentSignalSchema.extend({
+  assetClass: z.literal("fx"),
+  instrument: FxInstrumentSchema,
+});
+export const FxWebhookSchema = TradingViewWebhookSchema.extend({
+  assetClass: z.literal("fx"),
+  ticker: FxInstrumentSchema,
+});
+export const FxCapitalRequestSchema = CapitalRequestSchema.extend({
+  assetClass: z.literal("fx"),
+  instrument: FxInstrumentSchema,
+});
+export const FxCapitalReturnSchema = CapitalReturnSchema.extend({ assetClass: z.literal("fx") });
